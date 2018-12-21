@@ -1,0 +1,28 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+            "folder_exclude_patterns": ["__pycache__"]
+		}
+	],
+    "build_systems":
+    [
+        {
+            "file_regex": "^[ ]*File \"(...*?)\", line ([0-9]*)",
+            "name": "Run_App",
+            "selector": "source.python",
+            "cmd": ["python3.6", "-u", "$file"]
+        },
+        {
+            "name": "Build_UI",
+            "selector": "source.makefile",
+            "cmd": ["make", "ui"]
+        },
+        {
+            "name": "Clean_UI",
+            "selector": "source.makefile",
+            "cmd": ["make", "clean"]
+        }
+    ],
+}
