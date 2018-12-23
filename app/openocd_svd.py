@@ -1,7 +1,7 @@
 #!/user/bin/env python3
 
 """
-openocd-svd is a special Python utility to access peripheral registers
+openocd-svd is a special Python GUI utility to access peripheral registers
 of ARM MCUs via OpenOCD's telnet
 
 Run (SVD path argument is optional):
@@ -13,7 +13,8 @@ import sys
 import os
 from svd import SVDReader
 from openocd import OpenOCDTelnet
-from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QFileDialog
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QWidget, QFileDialog, QVBoxLayout, QLabel, QTreeWidget
 from ui_main import Ui_MainWindow
 from ui_about import Ui_Dialog
 
@@ -52,7 +53,9 @@ class MainWindow(QMainWindow):
     def act_open_svd_triggered(self):
         print("Open SVD action triggered")
         options = QFileDialog.Options()
-        fileName, _ = QFileDialog.getOpenFileName(self, "Open SVD file", "", "SVD Files (*.svd *.SVD *.xml)", options=options)
+        fileName, _ = QFileDialog.getOpenFileName(self,
+                                                  "Open SVD file", "", "SVD Files (*.svd *.SVD *.xml)",
+                                                  options=options)
         if fileName:
             print(self.svd_path)
             self.read_svd(fileName)
@@ -73,8 +76,43 @@ class MainWindow(QMainWindow):
 
     def combo_periph_changed(self, num):
         print("Periph combobox changed: %d" % num)
+        periph_name = self.svd_file.device[num - 1]["name"]
+        periph_descr = self.svd_file.device[num - 1]["description"]
+        if num > 0:
+            if (self.ui.tab_periph.findChild(QWidget, periph_name)):
+                self.ui.tab_periph.setCurrentWidget(self.ui.tab_periph.findChild(QWidget, periph_name))
+            else:
+                self.ui.tab_periph_inst = QWidget()
+                self.ui.tab_periph_inst.setObjectName(periph_name)
+                self.ui.vert_layout = QVBoxLayout(self.ui.tab_periph_inst)
+                self.ui.vert_layout.setContentsMargins(6, 6, 6, 6)
+                self.ui.vert_layout.setSpacing(6)
+                self.ui.lab_periph_descr = QLabel(self.ui.tab_periph_inst)
+                self.ui.lab_periph_descr.setText(periph_descr)
+                self.ui.lab_periph_descr.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
+                                                                 QtCore.Qt.TextSelectableByMouse)
+                self.ui.vert_layout.addWidget(self.ui.lab_periph_descr)
+                self.ui.tree_regs = QTreeWidget(self.ui.tab_periph_inst)
+                self.ui.tree_regs.setObjectName("tree_regs")
+                self.ui.tree_regs.headerItem().setText(0, "Register")
+                self.ui.tree_regs.headerItem().setText(1, "Value")
+                self.ui.vert_layout.addWidget(self.ui.tree_regs)
+                self.ui.lab_info = QLabel(self.ui.tab_periph_inst)
+                self.ui.lab_info.setText("")
+                self.ui.lab_info.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
+                                                         QtCore.Qt.TextSelectableByMouse)
+                self.ui.vert_layout.addWidget(self.ui.lab_info)
+                self.ui.tab_periph.addTab(self.ui.tab_periph_inst, periph_name)
+                self.ui.tab_periph.setCurrentIndex(self.ui.tab_periph.count() - 1)
 
-    # -- Functional logic --
+    def tab_periph_close(self, num):
+        print("Tab periph closed: %d" % num)
+        widget = self.ui.tab_periph.widget(num)
+        if widget is not None:
+            widget.deleteLater()
+        self.ui.tab_periph.removeTab(num)
+
+    # -- Application logic --
     def read_svd(self, path):
         try:
             self.svd_file = SVDReader(path)
@@ -83,6 +121,7 @@ class MainWindow(QMainWindow):
             title = title.split(" - ")[-1]
             self.setWindowTitle(os.path.basename(path) + " - " + title)
             self.ui.combo_periph.clear()
+            self.ui.combo_periph.addItems(["---"])
             self.ui.combo_periph.addItems([periph["name"] for periph in self.svd_file.device])
         except:
             self.ui.statusBar.showMessage("Can't open %s - file is corrupted!" % os.path.basename(path))
@@ -92,7 +131,7 @@ class MainWindow(QMainWindow):
             self.openocd_tn.open()
             self.openocd_tn.is_opened = True
             self.ui.btn_connect.setText("Disconnect")
-            self.ui.lab_status.setText("Connected to OpenOCD, target: %s" % self.openocd_tn.get_target_name())
+            self.ui.lab_status.setText("Connected, target: %s" % self.openocd_tn.get_target_name())
         except:
             self.ui.statusBar.showMessage("Can't connect to OpenOCD!")
 
