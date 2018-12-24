@@ -25,13 +25,16 @@ class SVDReader:
             else:
                 self.device[-1]["regs"] = []
                 for reg in periph.registers:
-                    self.device[-1]["regs"] += [{"name": reg.name,
+                    self.device[-1]["regs"] += [{"type": "reg",
+                                                 "name": reg.name,
                                                  "description": reg.description,
                                                  "address_offset": reg.address_offset,
                                                  "fields": []}]
                     for field in reg.fields:
-                        self.device[-1]["regs"][-1]["fields"] += [{"name": field.name,
+                        self.device[-1]["regs"][-1]["fields"] += [{"type": "field",
+                                                                   "name": field.name,
                                                                    "description": field.description,
+                                                                   "address_offset": reg.address_offset,
                                                                    "lsb": field.bit_offset,
                                                                    "msb": field.bit_offset + field.bit_width - 1,
                                                                    "access": field.access,

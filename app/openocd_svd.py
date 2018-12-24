@@ -14,7 +14,7 @@ import os
 from svd import SVDReader
 from openocd import OpenOCDTelnet
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QWidget, QFileDialog, QVBoxLayout, QLabel, QTreeWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QWidget, QFileDialog, QVBoxLayout, QLabel, QTreeWidget, QTreeWidgetItem
 from ui_main import Ui_MainWindow
 from ui_about import Ui_Dialog
 
@@ -82,27 +82,50 @@ class MainWindow(QMainWindow):
             if (self.ui.tab_periph.findChild(QWidget, periph_name)):
                 self.ui.tab_periph.setCurrentWidget(self.ui.tab_periph.findChild(QWidget, periph_name))
             else:
-                self.ui.tab_periph_inst = QWidget()
-                self.ui.tab_periph_inst.setObjectName(periph_name)
-                self.ui.vert_layout = QVBoxLayout(self.ui.tab_periph_inst)
-                self.ui.vert_layout.setContentsMargins(6, 6, 6, 6)
-                self.ui.vert_layout.setSpacing(6)
-                self.ui.lab_periph_descr = QLabel(self.ui.tab_periph_inst)
-                self.ui.lab_periph_descr.setText(periph_descr)
-                self.ui.lab_periph_descr.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
-                                                                 QtCore.Qt.TextSelectableByMouse)
-                self.ui.vert_layout.addWidget(self.ui.lab_periph_descr)
-                self.ui.tree_regs = QTreeWidget(self.ui.tab_periph_inst)
-                self.ui.tree_regs.setObjectName("tree_regs")
-                self.ui.tree_regs.headerItem().setText(0, "Register")
-                self.ui.tree_regs.headerItem().setText(1, "Value")
-                self.ui.vert_layout.addWidget(self.ui.tree_regs)
-                self.ui.lab_info = QLabel(self.ui.tab_periph_inst)
-                self.ui.lab_info.setText("")
-                self.ui.lab_info.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
-                                                         QtCore.Qt.TextSelectableByMouse)
-                self.ui.vert_layout.addWidget(self.ui.lab_info)
-                self.ui.tab_periph.addTab(self.ui.tab_periph_inst, periph_name)
+                # create new tab
+                periph_page = QWidget()
+                periph_page.setObjectName(periph_name)
+                # vertical layout inside
+                periph_page.vert_layout = QVBoxLayout(periph_page)
+                periph_page.vert_layout.setContentsMargins(6, 6, 6, 6)
+                periph_page.vert_layout.setSpacing(6)
+                # label with peripheral description
+                periph_page.lab_periph_descr = QLabel(periph_page)
+                periph_page.lab_periph_descr.setText(periph_descr)
+                periph_page.lab_periph_descr.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
+                                                                     QtCore.Qt.TextSelectableByMouse)
+                periph_page.vert_layout.addWidget(periph_page.lab_periph_descr)
+                # tree widget for displaying regs
+                reg_col = 0
+                val_col = 1
+                periph_page.tree_regs = QTreeWidget(periph_page)
+                periph_page.tree_regs.itemSelectionChanged.connect(self.tree_regs_selection_changed)
+                # periph_page.tree_regs.setObjectName("tree_regs")
+                periph_page.tree_regs.headerItem().setText(reg_col, "Register")
+                periph_page.tree_regs.setColumnWidth(reg_col, 200)
+                periph_page.tree_regs.headerItem().setText(val_col, "Value")
+                for reg in self.svd_file.device[num - 1]["regs"]:
+                    item0 = QTreeWidgetItem(periph_page.tree_regs)
+                    item0.svd = reg
+                    item0.setText(reg_col, reg["name"])
+                    item0.setText(val_col, "0x00000000")
+                    periph_page.tree_regs.addTopLevelItem(item0)
+                    for field in reg["fields"]:
+                        item1 = QTreeWidgetItem(item0)
+                        item1.svd = field
+                        item1.setText(reg_col, field["name"])
+                        item1.setText(val_col, "0")
+                        item0.addChild(item1)
+                periph_page.vert_layout.addWidget(periph_page.tree_regs)
+                # label with register/field description
+                periph_page.lab_info = QLabel(periph_page)
+                periph_page.lab_info.setMaximumSize(QtCore.QSize(16777215, 40))
+                periph_page.lab_info.setText("")
+                periph_page.lab_info.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
+                                                             QtCore.Qt.TextSelectableByMouse)
+                periph_page.vert_layout.addWidget(periph_page.lab_info)
+                # add this tab to the tab widget
+                self.ui.tab_periph.addTab(periph_page, periph_name)
                 self.ui.tab_periph.setCurrentIndex(self.ui.tab_periph.count() - 1)
 
     def tab_periph_close(self, num):
@@ -111,6 +134,24 @@ class MainWindow(QMainWindow):
         if widget is not None:
             widget.deleteLater()
         self.ui.tab_periph.removeTab(num)
+
+    def tree_regs_selection_changed(self):
+        print("Tree regs selection changed")
+        tree_item = self.ui.tab_periph.currentWidget().tree_regs.selectedItems()[0]
+        name = tree_item.svd["name"]
+        descr = tree_item.svd["description"]
+        addr = tree_item.svd["address_offset"]
+        if "access" in tree_item.svd.keys():
+            temp = tree_item.svd["access"]
+            access = "<%s>" % (temp.split("-")[0][0] + temp.split("-")[1][0]).upper()
+        else:
+            access = ""
+        if "msb" in tree_item.svd.keys():
+            bits = "[%d:%d]" % (tree_item.svd["msb"],
+                                tree_item.svd["lsb"])
+        else:
+            bits = ""
+        self.ui.tab_periph.currentWidget().lab_info.setText("(0x%08x)%s%s : %s\n%s" % (addr, bits, access, name, descr))
 
     # -- Application logic --
     def read_svd(self, path):
