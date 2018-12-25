@@ -19,6 +19,7 @@ class SVDReader:
             self.device += [{"name": periph.name,
                              "description": periph.description,
                              "base_address": periph.base_address,
+                             "group_name": periph.group_name,
                              "regs": periph.derived_from}]  # regs value will be replaced with regs list
             if (self.device[-1]["regs"] is not None):
                     self.device[-1]["regs"] = next(periph for periph in self.device if periph["name"] == self.device[-1]["regs"])["regs"].copy()
