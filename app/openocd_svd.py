@@ -14,7 +14,7 @@ import os
 from svd import SVDReader
 from openocd import OpenOCDTelnet
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QWidget, QFileDialog, QVBoxLayout, QLabel, QTreeWidget, QTreeWidgetItem
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QWidget, QFileDialog, QVBoxLayout, QLabel, QTreeWidget, QTreeWidgetItem, QLineEdit
 from ui_main import Ui_MainWindow
 from ui_about import Ui_Dialog
 
@@ -108,13 +108,19 @@ class MainWindow(QMainWindow):
                     item0 = QTreeWidgetItem(periph_page.tree_regs)
                     item0.svd = reg
                     item0.setText(reg_col, reg["name"])
-                    item0.setText(val_col, "0x00000000")
+                    reg_line_edit = QLineEdit()
+                    reg_line_edit.setMaximumSize(QtCore.QSize(16777215, 20))
+                    reg_line_edit.setText("0x00000000")
+                    periph_page.tree_regs.setItemWidget(item0, val_col, reg_line_edit)
                     periph_page.tree_regs.addTopLevelItem(item0)
                     for field in reg["fields"]:
                         item1 = QTreeWidgetItem(item0)
                         item1.svd = field
                         item1.setText(reg_col, field["name"])
-                        item1.setText(val_col, "0")
+                        field_line_edit = QLineEdit()
+                        field_line_edit.setMaximumSize(QtCore.QSize(16777215, 20))
+                        field_line_edit.setText("0")
+                        periph_page.tree_regs.setItemWidget(item1, val_col, field_line_edit)
                         item0.addChild(item1)
                 periph_page.vert_layout.addWidget(periph_page.tree_regs)
                 # label with register/field description
