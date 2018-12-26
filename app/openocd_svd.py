@@ -14,6 +14,7 @@ import os
 from svd import SVDReader
 from openocd import OpenOCDTelnet
 from PyQt5 import QtCore
+from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QWidget, QFileDialog, QVBoxLayout, QLabel, QTreeWidget, QTreeWidgetItem, QLineEdit, QAction, QMenu
 from ui_main import Ui_MainWindow
 from ui_about import Ui_Dialog
@@ -21,6 +22,65 @@ from ui_about import Ui_Dialog
 
 # -- Global variables ---------------------------------------------------------
 VERSION = "0.1"
+
+
+# -- Custom widgets -----------------------------------------------------------
+class MyLineEdit(QLineEdit):
+    def __init__(self):
+        QLineEdit.__init__(self)
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.__contextMenu)
+        self.textMode = 10
+        self.textBitWidth = 32
+
+    def __contextMenu(self, pos):
+        self.menu = self.createStandardContextMenu()
+
+        self.menu.act_to_dec = QAction(self)
+        self.menu.act_to_dec.setText("Convert to Dec")
+        self.menu.act_to_dec.triggered.connect(self.setFormatDec)
+        self.menu.act_to_hex = QAction(self)
+        self.menu.act_to_hex.setText("Convert to Hex")
+        self.menu.act_to_hex.triggered.connect(self.setFormatHex)
+        self.menu.act_to_bin = QAction(self)
+        self.menu.act_to_bin.setText("Convert to Bin")
+        self.menu.act_to_bin.triggered.connect(self.setFormatBin)
+        self.menu.insertActions(self.menu.actions()[0],
+                                [self.menu.act_to_dec, self.menu.act_to_hex, self.menu.act_to_bin])
+        self.menu.insertSeparator(self.menu.actions()[3])
+
+        self.menu.exec_(QCursor.pos())
+
+    def setValidatorDec(self):
+        print("Change validator to Dec")
+
+    def setValidatorHex(self):
+        print("Change validator to Hex")
+
+    def setValidatorBin(self):
+        print("Change validator to Bin")
+
+    def setFormatDec(self):
+        print("Convert to Dec")
+        self.setText(str(int(self.text().replace(" ", ""), self.textMode)))
+        self.textMode = 10
+        self.setValidatorDec()
+
+    def setFormatHex(self):
+        print("Convert to Hex")
+        self.setText(format(int(self.text().replace(" ", ""), self.textMode),
+                            '#0%dx' % (2 + int(self.textBitWidth / 4) + (self.textBitWidth % 4 > 0))))
+        self.textMode = 16
+        self.setValidatorHex()
+
+    def setFormatBin(self):
+        print("Convert to Bin")
+        chunk_n = 4
+        bin_str = format(int(self.text(), self.textMode), '0%db' % self.textBitWidth)
+        spaced_bin_str = ' '.join(list(reversed([bin_str[::-1][i:i + chunk_n] for i in range(0, len(bin_str), chunk_n)])))
+        self.setText(spaced_bin_str)
+        self.textMode = 2
+        self.setValidatorBin()
 
 
 # -- Main window --------------------------------------------------------------
@@ -85,55 +145,58 @@ class MainWindow(QMainWindow):
             self.ui.tab_periph.setCurrentWidget(self.ui.tab_periph.findChild(QWidget, periph_name))
         else:
             # create new tab
-            periph_page = QWidget()
-            periph_page.setObjectName(periph_name)
+            page_periph = QWidget()
+            page_periph.setObjectName(periph_name)
             # vertical layout inside
-            periph_page.vert_layout = QVBoxLayout(periph_page)
-            periph_page.vert_layout.setContentsMargins(6, 6, 6, 6)
-            periph_page.vert_layout.setSpacing(6)
+            page_periph.vert_layout = QVBoxLayout(page_periph)
+            page_periph.vert_layout.setContentsMargins(6, 6, 6, 6)
+            page_periph.vert_layout.setSpacing(6)
             # label with peripheral description
-            periph_page.lab_periph_descr = QLabel(periph_page)
-            periph_page.lab_periph_descr.setText(periph_descr)
-            periph_page.lab_periph_descr.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
+            page_periph.lab_periph_descr = QLabel(page_periph)
+            page_periph.lab_periph_descr.setText(periph_descr)
+            page_periph.lab_periph_descr.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
                                                                  QtCore.Qt.TextSelectableByMouse)
-            periph_page.vert_layout.addWidget(periph_page.lab_periph_descr)
+            page_periph.vert_layout.addWidget(page_periph.lab_periph_descr)
             # tree widget for displaying regs
             reg_col = 0
             val_col = 1
-            periph_page.tree_regs = QTreeWidget(periph_page)
-            periph_page.tree_regs.itemSelectionChanged.connect(self.tree_regs_selection_changed)
-            # periph_page.tree_regs.setObjectName("tree_regs")
-            periph_page.tree_regs.headerItem().setText(reg_col, "Register")
-            periph_page.tree_regs.setColumnWidth(reg_col, 200)
-            periph_page.tree_regs.headerItem().setText(val_col, "Value")
+            page_periph.tree_regs = QTreeWidget(page_periph)
+            page_periph.tree_regs.itemSelectionChanged.connect(self.tree_regs_selection_changed)
+            page_periph.tree_regs.headerItem().setText(reg_col, "Register")
+            page_periph.tree_regs.setColumnWidth(reg_col, 200)
+            page_periph.tree_regs.headerItem().setText(val_col, "Value")
             for reg in self.svd_file.device[periph_num]["regs"]:
-                item0 = QTreeWidgetItem(periph_page.tree_regs)
+                item0 = QTreeWidgetItem(page_periph.tree_regs)
                 item0.svd = reg
                 item0.setText(reg_col, reg["name"])
-                reg_line_edit = QLineEdit()
-                reg_line_edit.setMaximumSize(QtCore.QSize(16777215, 20))
-                reg_line_edit.setText("0x00000000")
-                periph_page.tree_regs.setItemWidget(item0, val_col, reg_line_edit)
-                periph_page.tree_regs.addTopLevelItem(item0)
+                ledit_reg = MyLineEdit()
+                ledit_reg.setText("0")
+                ledit_reg.textBitWidth = 32
+                ledit_reg.setFormatHex()
+                ledit_reg.setMaximumSize(QtCore.QSize(16777215, 20))
+                page_periph.tree_regs.setItemWidget(item0, val_col, ledit_reg)
+                page_periph.tree_regs.addTopLevelItem(item0)
                 for field in reg["fields"]:
                     item1 = QTreeWidgetItem(item0)
                     item1.svd = field
                     item1.setText(reg_col, field["name"])
-                    field_line_edit = QLineEdit()
-                    field_line_edit.setMaximumSize(QtCore.QSize(16777215, 20))
-                    field_line_edit.setText("0")
-                    periph_page.tree_regs.setItemWidget(item1, val_col, field_line_edit)
+                    ledit_field = MyLineEdit()
+                    ledit_field.setText("0")
+                    ledit_field.textBitWidth = field["msb"] - field["lsb"] + 1
+                    ledit_field.setFormatHex()
+                    ledit_field.setMaximumSize(QtCore.QSize(16777215, 20))
+                    page_periph.tree_regs.setItemWidget(item1, val_col, ledit_field)
                     item0.addChild(item1)
-            periph_page.vert_layout.addWidget(periph_page.tree_regs)
+            page_periph.vert_layout.addWidget(page_periph.tree_regs)
             # label with register/field description
-            periph_page.lab_info = QLabel(periph_page)
-            periph_page.lab_info.setMaximumSize(QtCore.QSize(16777215, 40))
-            periph_page.lab_info.setText("")
-            periph_page.lab_info.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
+            page_periph.lab_info = QLabel(page_periph)
+            page_periph.lab_info.setMaximumSize(QtCore.QSize(16777215, 40))
+            page_periph.lab_info.setText("")
+            page_periph.lab_info.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
                                                          QtCore.Qt.TextSelectableByMouse)
-            periph_page.vert_layout.addWidget(periph_page.lab_info)
+            page_periph.vert_layout.addWidget(page_periph.lab_info)
             # add this tab to the tab widget
-            self.ui.tab_periph.addTab(periph_page, periph_name)
+            self.ui.tab_periph.addTab(page_periph, periph_name)
             self.ui.tab_periph.setCurrentIndex(self.ui.tab_periph.count() - 1)
 
     def tab_periph_close(self, num):
