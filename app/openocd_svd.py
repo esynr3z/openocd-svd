@@ -76,7 +76,6 @@ class NumLineEdit(QLineEdit):
         return self.__displayBase
 
     def setDisplayValidator(self, displayBase):
-        print("Change display validator")
         if displayBase == 10:
             max_int = 2**self.numBitWidth()
             self.setValidator(QIntValidator(0, max_int - 1))
@@ -114,7 +113,7 @@ class NumLineEdit(QLineEdit):
             spaced_bin_str = ' '.join(([bin_str[::-1][i:i + chunk_n] for i in range(0, len(bin_str), chunk_n)]))[::-1]
             self.setText(spaced_bin_str)
         else:
-            print("Can't setDisplayFormat() - unknown base")
+            raise ValueError("Can't setDisplayFormat() - unknown base")
 
 
 # -- Main window --------------------------------------------------------------
@@ -143,30 +142,25 @@ class MainWindow(QMainWindow):
 
     # -- Slots --
     def act_connect_triggered(self):
-        print("Connect triggered")
         if self.openocd_tn.is_opened:
             self.disconnect_openocd()
         else:
             self.connect_openocd()
 
     def act_open_svd_triggered(self):
-        print("Open SVD action triggered")
         options = QFileDialog.Options()
         fileName, _ = QFileDialog.getOpenFileName(self,
                                                   "Open SVD file", "", "SVD Files (*.svd *.SVD *.xml)",
                                                   options=options)
         if fileName:
-            print(self.svd_path)
             self.read_svd(fileName)
 
     def act_about_triggered(self):
-        print("About action triggered")
         text = self.about_dialog.ui.lab_version.text().replace("x.x", VERSION)
         self.about_dialog.ui.lab_version.setText(text)
         self.about_dialog.exec_()
 
     def act_periph_triggered(self):
-        print("Action periph triggered")
         sender_name = self.sender().objectName()
         for periph in self.svd_file.device:
             if sender_name == periph["name"]:
@@ -228,14 +222,12 @@ class MainWindow(QMainWindow):
             self.ui.tab_periph.setCurrentIndex(self.ui.tab_periph.count() - 1)
 
     def tab_periph_close(self, num):
-        print("Tab periph closed: %d" % num)
         widget = self.ui.tab_periph.widget(num)
         if widget is not None:
             widget.deleteLater()
         self.ui.tab_periph.removeTab(num)
 
     def tree_regs_selection_changed(self):
-        print("Tree regs selection changed")
         tree_item = self.ui.tab_periph.currentWidget().tree_regs.selectedItems()[0]
         name = tree_item.svd["name"]
         descr = tree_item.svd["description"]
