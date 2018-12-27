@@ -14,8 +14,10 @@ import os
 from svd import SVDReader
 from openocd import OpenOCDTelnet
 from PyQt5 import QtCore
-from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QWidget, QFileDialog, QVBoxLayout, QLabel, QTreeWidget, QTreeWidgetItem, QLineEdit, QAction, QMenu
+from PyQt5.QtGui import QCursor, QRegExpValidator, QIntValidator
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QWidget,
+                             QFileDialog, QVBoxLayout, QLabel, QTreeWidget,
+                             QTreeWidgetItem, QLineEdit, QAction, QMenu)
 from ui_main import Ui_MainWindow
 from ui_about import Ui_Dialog
 
@@ -25,62 +27,94 @@ VERSION = "0.1"
 
 
 # -- Custom widgets -----------------------------------------------------------
-class MyLineEdit(QLineEdit):
-    def __init__(self):
+class NumLineEdit(QLineEdit):
+    def __init__(self, numBitWidth=32, num=0, displayBase=16):
         QLineEdit.__init__(self)
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.__contextMenu)
-        self.textMode = 10
-        self.textBitWidth = 32
+        self.editingFinished.connect(self.__numEdited)
+        self.__num = num
+        self.__displayBase = displayBase
+        self.__numBitWidth = numBitWidth
+        self.setNum(self.__num)
 
     def __contextMenu(self, pos):
         self.menu = self.createStandardContextMenu()
 
-        self.menu.act_to_dec = QAction(self)
-        self.menu.act_to_dec.setText("Convert to Dec")
-        self.menu.act_to_dec.triggered.connect(self.setFormatDec)
-        self.menu.act_to_hex = QAction(self)
-        self.menu.act_to_hex.setText("Convert to Hex")
-        self.menu.act_to_hex.triggered.connect(self.setFormatHex)
-        self.menu.act_to_bin = QAction(self)
-        self.menu.act_to_bin.setText("Convert to Bin")
-        self.menu.act_to_bin.triggered.connect(self.setFormatBin)
+        self.menu.act_to_dec = QAction("Convert to Dec")
+        self.menu.act_to_dec.triggered.connect(lambda: self.setDisplayFormat(10))
+        self.menu.act_to_hex = QAction("Convert to Hex")
+        self.menu.act_to_hex.triggered.connect(lambda: self.setDisplayFormat(16))
+        self.menu.act_to_bin = QAction("Convert to Bin")
+        self.menu.act_to_bin.triggered.connect(lambda: self.setDisplayFormat(2))
         self.menu.insertActions(self.menu.actions()[0],
                                 [self.menu.act_to_dec, self.menu.act_to_hex, self.menu.act_to_bin])
         self.menu.insertSeparator(self.menu.actions()[3])
 
         self.menu.exec_(QCursor.pos())
 
-    def setValidatorDec(self):
-        print("Change validator to Dec")
+    def __numEdited(self):
+        self.__num = int(self.text().replace(" ", ""), self.displayBase())
 
-    def setValidatorHex(self):
-        print("Change validator to Hex")
+    def numBitWidth(self):
+        return self.__numBitWidth
 
-    def setValidatorBin(self):
-        print("Change validator to Bin")
+    def setNumBitWidth(self, numBitWidth):
+        self.__numBitWidth = numBitWidth
 
-    def setFormatDec(self):
-        print("Convert to Dec")
-        self.setText(str(int(self.text().replace(" ", ""), self.textMode)))
-        self.textMode = 10
-        self.setValidatorDec()
+    def num(self):
+        return self.__num
 
-    def setFormatHex(self):
-        print("Convert to Hex")
-        self.setText(format(int(self.text().replace(" ", ""), self.textMode),
-                            '#0%dx' % (2 + int(self.textBitWidth / 4) + (self.textBitWidth % 4 > 0))))
-        self.textMode = 16
-        self.setValidatorHex()
+    def setNum(self, num, displayBase=None):
+        self.__num = num
+        if displayBase:
+            self.setDisplayFormat(displayBase)
+        else:
+            self.setDisplayFormat(self.displayBase())
 
-    def setFormatBin(self):
-        print("Convert to Bin")
-        chunk_n = 4
-        bin_str = format(int(self.text(), self.textMode), '0%db' % self.textBitWidth)
-        spaced_bin_str = ' '.join(list(reversed([bin_str[::-1][i:i + chunk_n] for i in range(0, len(bin_str), chunk_n)])))
-        self.setText(spaced_bin_str)
-        self.textMode = 2
-        self.setValidatorBin()
+    def displayBase(self):
+        return self.__displayBase
+
+    def setDisplayValidator(self, displayBase):
+        print("Change display validator")
+        if displayBase == 10:
+            max_int = 2**self.numBitWidth()
+            self.setValidator(QIntValidator(0, max_int - 1))
+        elif displayBase == 16:
+            high_part = ""
+            low_part = ""
+            if self.numBitWidth() % 4 > 0:
+                high_part = "[0-%d]" % (2**(self.numBitWidth() % 4) - 1)
+            if int(self.numBitWidth() / 4) > 0:
+                low_part = "[0-9A-Fa-f]{%d}" % int(self.numBitWidth() / 4)
+            allowed_symbols = "0x" + high_part + low_part
+            self.setValidator(QRegExpValidator(QtCore.QRegExp(allowed_symbols)))
+        elif displayBase == 2:
+            high_part = ""
+            low_part = ""
+            if self.numBitWidth() % 4 > 0:
+                high_part = "(0|1){%d}" % (self.numBitWidth() % 4)
+            if int(self.numBitWidth() / 4) > 0:
+                low_part = "((\s|)(0|1){4}){%d}" % int(self.numBitWidth() / 4)
+            allowed_symbols = "^" + high_part + low_part + "$"
+            self.setValidator(QRegExpValidator(QtCore.QRegExp(allowed_symbols)))
+
+    def setDisplayFormat(self, displayBase):
+        self.__displayBase = displayBase
+        self.setDisplayValidator(displayBase)
+
+        if displayBase == 10:
+            self.setText(str(self.num()))
+        elif displayBase == 16:
+            self.setText(format(self.num(),
+                                '#0%dx' % (2 + int(self.numBitWidth() / 4) + (self.numBitWidth() % 4 > 0))))
+        elif displayBase == 2:
+            chunk_n = 4
+            bin_str = format(self.num(), '0%db' % self.numBitWidth())
+            spaced_bin_str = ' '.join(([bin_str[::-1][i:i + chunk_n] for i in range(0, len(bin_str), chunk_n)]))[::-1]
+            self.setText(spaced_bin_str)
+        else:
+            print("Can't setDisplayFormat() - unknown base")
 
 
 # -- Main window --------------------------------------------------------------
@@ -169,10 +203,7 @@ class MainWindow(QMainWindow):
                 item0 = QTreeWidgetItem(page_periph.tree_regs)
                 item0.svd = reg
                 item0.setText(reg_col, reg["name"])
-                ledit_reg = MyLineEdit()
-                ledit_reg.setText("0")
-                ledit_reg.textBitWidth = 32
-                ledit_reg.setFormatHex()
+                ledit_reg = NumLineEdit(32)
                 ledit_reg.setMaximumSize(QtCore.QSize(16777215, 20))
                 page_periph.tree_regs.setItemWidget(item0, val_col, ledit_reg)
                 page_periph.tree_regs.addTopLevelItem(item0)
@@ -180,10 +211,7 @@ class MainWindow(QMainWindow):
                     item1 = QTreeWidgetItem(item0)
                     item1.svd = field
                     item1.setText(reg_col, field["name"])
-                    ledit_field = MyLineEdit()
-                    ledit_field.setText("0")
-                    ledit_field.textBitWidth = field["msb"] - field["lsb"] + 1
-                    ledit_field.setFormatHex()
+                    ledit_field = NumLineEdit(field["msb"] - field["lsb"] + 1)
                     ledit_field.setMaximumSize(QtCore.QSize(16777215, 20))
                     page_periph.tree_regs.setItemWidget(item1, val_col, ledit_field)
                     item0.addChild(item1)
