@@ -12,8 +12,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>600</width>
-    <height>800</height>
+    <width>768</width>
+    <height>768</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -75,7 +75,7 @@
        <number>6</number>
       </property>
       <item>
-       <widget class="QTabWidget" name="tab_periph">
+       <widget class="QTabWidget" name="tabs_device">
         <property name="tabPosition">
          <enum>QTabWidget::South</enum>
         </property>
@@ -99,7 +99,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>600</width>
+     <width>768</width>
      <height>28</height>
     </rect>
    </property>
@@ -222,7 +222,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>tab_periph</sender>
+   <sender>tabs_device</sender>
    <signal>tabCloseRequested(int)</signal>
    <receiver>MainWindow</receiver>
    <slot>tab_periph_close(int)</slot>

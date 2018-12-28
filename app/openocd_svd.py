@@ -15,9 +15,9 @@ from svd import SVDReader
 from openocd import OpenOCDTelnet
 from PyQt5 import QtCore
 from PyQt5.QtGui import QCursor, QRegExpValidator, QIntValidator
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QWidget,
-                             QFileDialog, QVBoxLayout, QLabel, QTreeWidget,
-                             QTreeWidgetItem, QLineEdit, QAction, QMenu)
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QWidget, QComboBox, QCheckBox,
+                             QFileDialog, QVBoxLayout, QHBoxLayout, QLabel, QTreeWidget,
+                             QTreeWidgetItem, QLineEdit, QAction, QMenu, QPushButton)
 from ui_main import Ui_MainWindow
 from ui_about import Ui_Dialog
 
@@ -27,16 +27,15 @@ VERSION = "0.1"
 
 
 # -- Custom widgets -----------------------------------------------------------
-class NumLineEdit(QLineEdit):
-    def __init__(self, numBitWidth=32, num=0, displayBase=16):
+class NumEdit(QLineEdit):
+    def __init__(self, numBitWidth=32):
         QLineEdit.__init__(self)
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.__contextMenu)
-        self.editingFinished.connect(self.__numEdited)
-        self.__num = num
-        self.__displayBase = displayBase
         self.__numBitWidth = numBitWidth
-        self.setNum(self.__num)
+        self.__displayBase = 16
+        self.setText("0")
+        self.setDisplayFormat(16)
 
     def __contextMenu(self, pos):
         self.menu = self.createStandardContextMenu()
@@ -53,9 +52,6 @@ class NumLineEdit(QLineEdit):
 
         self.menu.exec_(QCursor.pos())
 
-    def __numEdited(self):
-        self.__num = int(self.text().replace(" ", ""), self.displayBase())
-
     def numBitWidth(self):
         return self.__numBitWidth
 
@@ -63,14 +59,13 @@ class NumLineEdit(QLineEdit):
         self.__numBitWidth = numBitWidth
 
     def num(self):
-        return self.__num
+        return int(self.text().replace(" ", ""), self.displayBase())
 
     def setNum(self, num, displayBase=None):
-        self.__num = num
         if displayBase:
-            self.setDisplayFormat(displayBase)
+            self.setDisplayFormat(displayBase, num)
         else:
-            self.setDisplayFormat(self.displayBase())
+            self.setDisplayFormat(self.displayBase(), num)
 
     def displayBase(self):
         return self.__displayBase
@@ -98,22 +93,69 @@ class NumLineEdit(QLineEdit):
             allowed_symbols = "^" + high_part + low_part + "$"
             self.setValidator(QRegExpValidator(QtCore.QRegExp(allowed_symbols)))
 
-    def setDisplayFormat(self, displayBase):
-        self.__displayBase = displayBase
-        self.setDisplayValidator(displayBase)
-
-        if displayBase == 10:
-            self.setText(str(self.num()))
-        elif displayBase == 16:
-            self.setText(format(self.num(),
-                                '#0%dx' % (2 + int(self.numBitWidth() / 4) + (self.numBitWidth() % 4 > 0))))
-        elif displayBase == 2:
-            chunk_n = 4
-            bin_str = format(self.num(), '0%db' % self.numBitWidth())
-            spaced_bin_str = ' '.join(([bin_str[::-1][i:i + chunk_n] for i in range(0, len(bin_str), chunk_n)]))[::-1]
-            self.setText(spaced_bin_str)
+    def setDisplayFormat(self, displayBase, num=None):
+        if num:
+            self.setText(self.__formatNum(num, displayBase))
         else:
-            raise ValueError("Can't setDisplayFormat() - unknown base")
+            self.setText(self.__formatNum(self.num(), displayBase))
+        self.setDisplayValidator(displayBase)
+        self.__displayBase = displayBase
+
+    def __formatNum(self, num, base):
+        if base == 10:
+            return str(num)
+        elif base == 16:
+            return format(num, '#0%dx' % (2 + int(self.numBitWidth() / 4) + (self.numBitWidth() % 4 > 0)))
+        elif base == 2:
+            chunk_n = 4
+            bin_str = format(num, '0%db' % self.numBitWidth())
+            return ' '.join(([bin_str[::-1][i:i + chunk_n] for i in range(0, len(bin_str), chunk_n)]))[::-1]
+        else:
+            raise ValueError("Can't __formatNum() - unknown base")
+
+
+class RegEdit(QWidget):
+    def __init__(self, numBitWidth=32):
+        QWidget.__init__(self)
+        self.horiz_layout = QHBoxLayout(self)
+        self.horiz_layout.setContentsMargins(0, 0, 0, 0)
+        self.horiz_layout.setSpacing(0)
+        self.nedit_val = NumEdit(numBitWidth)
+        self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
+        self.horiz_layout.addWidget(self.nedit_val)
+        self.btn_read = QPushButton(self)
+        self.btn_read.setText("R")
+        self.btn_read.setMaximumSize(QtCore.QSize(25, 20))
+        self.horiz_layout.addWidget(self.btn_read)
+        self.btn_write = QPushButton(self)
+        self.btn_write.setText("W")
+        self.btn_write.setMaximumSize(QtCore.QSize(25, 20))
+        self.horiz_layout.addWidget(self.btn_write)
+
+
+class FieldEdit(QWidget):
+    def __init__(self, numBitWidth=32, enumDict={}):
+        QWidget.__init__(self)
+        self.horiz_layout = QHBoxLayout(self)
+        self.horiz_layout.setContentsMargins(0, 0, 0, 0)
+        self.horiz_layout.setSpacing(6)
+        if numBitWidth == 1:
+            self.isSingleBitField = True
+            self.chbox_val = QCheckBox(self)
+            self.horiz_layout.addWidget(self.chbox_val)
+        else:
+            self.isSingleBitField = False
+            self.nedit_val = NumEdit(numBitWidth)
+            self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
+            self.horiz_layout.addWidget(self.nedit_val)
+        if enumDict:
+            self.nedit_val.setMinimumSize(QtCore.QSize(100, 20))
+            self.nedit_val.setMaximumSize(QtCore.QSize(100, 20))
+            self.combo_enum = QComboBox(self)
+            for val in enumDict.keys():
+                self.combo_enum.addItem(enumDict[val])
+            self.combo_enum.setMaximumSize(QtCore.QSize(16777215, 20))
+            self.horiz_layout.addWidget(self.combo_enum)
 
 
 # -- Main window --------------------------------------------------------------
@@ -169,8 +211,8 @@ class MainWindow(QMainWindow):
                 periph_descr = self.svd_file.device[periph_num]["description"]
                 break
 
-        if (self.ui.tab_periph.findChild(QWidget, periph_name)):
-            self.ui.tab_periph.setCurrentWidget(self.ui.tab_periph.findChild(QWidget, periph_name))
+        if (self.ui.tabs_device.findChild(QWidget, periph_name)):
+            self.ui.tabs_device.setCurrentWidget(self.ui.tabs_device.findChild(QWidget, periph_name))
         else:
             # create new tab
             page_periph = QWidget()
@@ -197,17 +239,19 @@ class MainWindow(QMainWindow):
                 item0 = QTreeWidgetItem(page_periph.tree_regs)
                 item0.svd = reg
                 item0.setText(reg_col, reg["name"])
-                ledit_reg = NumLineEdit(32)
-                ledit_reg.setMaximumSize(QtCore.QSize(16777215, 20))
-                page_periph.tree_regs.setItemWidget(item0, val_col, ledit_reg)
+                page_periph.reg_edit = RegEdit()
+                page_periph.tree_regs.setItemWidget(item0, val_col, page_periph.reg_edit)
                 page_periph.tree_regs.addTopLevelItem(item0)
                 for field in reg["fields"]:
                     item1 = QTreeWidgetItem(item0)
                     item1.svd = field
                     item1.setText(reg_col, field["name"])
-                    ledit_field = NumLineEdit(field["msb"] - field["lsb"] + 1)
-                    ledit_field.setMaximumSize(QtCore.QSize(16777215, 20))
-                    page_periph.tree_regs.setItemWidget(item1, val_col, ledit_field)
+                    field_enum_dict = {}
+                    if field["enums"]:
+                        for enum in field["enums"]:
+                            field_enum_dict[int(enum["value"])] = "(0x%X) %s : %s" % (int(enum["value"]), enum["name"], enum["description"])
+                    page_periph.field_edit = FieldEdit(field["msb"] - field["lsb"] + 1, field_enum_dict)
+                    page_periph.tree_regs.setItemWidget(item1, val_col, page_periph.field_edit)
                     item0.addChild(item1)
             page_periph.vert_layout.addWidget(page_periph.tree_regs)
             # label with register/field description
@@ -218,17 +262,17 @@ class MainWindow(QMainWindow):
                                                          QtCore.Qt.TextSelectableByMouse)
             page_periph.vert_layout.addWidget(page_periph.lab_info)
             # add this tab to the tab widget
-            self.ui.tab_periph.addTab(page_periph, periph_name)
-            self.ui.tab_periph.setCurrentIndex(self.ui.tab_periph.count() - 1)
+            self.ui.tabs_device.addTab(page_periph, periph_name)
+            self.ui.tabs_device.setCurrentIndex(self.ui.tabs_device.count() - 1)
 
     def tab_periph_close(self, num):
-        widget = self.ui.tab_periph.widget(num)
+        widget = self.ui.tabs_device.widget(num)
         if widget is not None:
             widget.deleteLater()
-        self.ui.tab_periph.removeTab(num)
+        self.ui.tabs_device.removeTab(num)
 
     def tree_regs_selection_changed(self):
-        tree_item = self.ui.tab_periph.currentWidget().tree_regs.selectedItems()[0]
+        tree_item = self.ui.tabs_device.currentWidget().tree_regs.selectedItems()[0]
         name = tree_item.svd["name"]
         descr = tree_item.svd["description"]
         addr = tree_item.svd["address_offset"]
@@ -242,7 +286,7 @@ class MainWindow(QMainWindow):
                                 tree_item.svd["lsb"])
         else:
             bits = ""
-        self.ui.tab_periph.currentWidget().lab_info.setText("(0x%08x)%s%s : %s\n%s" % (addr, bits, access, name, descr))
+        self.ui.tabs_device.currentWidget().lab_info.setText("(0x%08x)%s%s : %s\n%s" % (addr, bits, access, name, descr))
 
     # -- Application logic --
     def read_svd(self, path):
