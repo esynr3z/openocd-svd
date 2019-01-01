@@ -16,7 +16,8 @@ class SVDReader:
         # Read peripherals and their registers
         self.device = []
         for periph in parser:
-            self.device += [{"name": periph.name,
+            self.device += [{"type": "periph",
+                             "name": periph.name,
                              "description": periph.description,
                              "base_address": periph.base_address,
                              "group_name": periph.group_name,

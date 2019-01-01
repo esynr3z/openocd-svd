@@ -115,12 +115,13 @@ class NumEdit(QLineEdit):
 
 
 class RegEdit(QWidget):
-    def __init__(self, numBitWidth=32):
+    def __init__(self, svd_reg):
         QWidget.__init__(self)
+        self.svd = svd_reg
         self.horiz_layout = QHBoxLayout(self)
         self.horiz_layout.setContentsMargins(0, 0, 0, 0)
         self.horiz_layout.setSpacing(0)
-        self.nedit_val = NumEdit(numBitWidth)
+        self.nedit_val = NumEdit(32)
         self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
         self.horiz_layout.addWidget(self.nedit_val)
         self.btn_read = QPushButton(self)
@@ -131,31 +132,101 @@ class RegEdit(QWidget):
         self.btn_write.setText("W")
         self.btn_write.setMaximumSize(QtCore.QSize(25, 20))
         self.horiz_layout.addWidget(self.btn_write)
+        self.fields = {}
+        for field in self.svd["fields"]:
+            self.fields[field["name"]] = FieldEdit(field)
 
 
 class FieldEdit(QWidget):
-    def __init__(self, numBitWidth=32, enumDict={}):
+    def __init__(self, svd_field):
         QWidget.__init__(self)
+        self.svd = svd_field
         self.horiz_layout = QHBoxLayout(self)
         self.horiz_layout.setContentsMargins(0, 0, 0, 0)
         self.horiz_layout.setSpacing(6)
-        if numBitWidth == 1:
+        self.numBitWidth = self.svd["msb"] - self.svd["lsb"] + 1
+        if self.numBitWidth == 1:
             self.isSingleBitField = True
             self.chbox_val = QCheckBox(self)
             self.horiz_layout.addWidget(self.chbox_val)
         else:
             self.isSingleBitField = False
-            self.nedit_val = NumEdit(numBitWidth)
+            self.nedit_val = NumEdit(self.numBitWidth)
             self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
             self.horiz_layout.addWidget(self.nedit_val)
-        if enumDict:
+        if self.svd["enums"]:
             self.nedit_val.setMinimumSize(QtCore.QSize(100, 20))
             self.nedit_val.setMaximumSize(QtCore.QSize(100, 20))
             self.combo_enum = QComboBox(self)
-            for val in enumDict.keys():
-                self.combo_enum.addItem(enumDict[val])
+            for enum in self.svd["enums"]:
+                self.combo_enum.addItem("(0x%X) %s : %s" % (int(enum["value"]), enum["name"], enum["description"]))
             self.combo_enum.setMaximumSize(QtCore.QSize(16777215, 20))
             self.horiz_layout.addWidget(self.combo_enum)
+
+
+class PeriphTab(QWidget):
+    def __init__(self, svd_periph):
+        QWidget.__init__(self)
+        self.svd = svd_periph
+        self.setObjectName(self.svd["name"])
+        # vertical layout inside
+        self.vert_layout = QVBoxLayout(self)
+        self.vert_layout.setContentsMargins(6, 6, 6, 6)
+        self.vert_layout.setSpacing(6)
+        # label with peripheral description
+        self.lab_periph_descr = QLabel(self)
+        self.lab_periph_descr.setText(self.svd["description"])
+        self.lab_periph_descr.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
+                                                      QtCore.Qt.TextSelectableByMouse)
+        self.vert_layout.addWidget(self.lab_periph_descr)
+        # tree widget for displaying regs
+        reg_col = 0
+        val_col = 1
+        self.tree_regs = QTreeWidget(self)
+        self.tree_regs.itemSelectionChanged.connect(self.tree_regs_selection_changed)
+        self.tree_regs.headerItem().setText(reg_col, "Register")
+        self.tree_regs.setColumnWidth(reg_col, 200)
+        self.tree_regs.headerItem().setText(val_col, "Value")
+        for reg in self.svd["regs"]:
+            item0 = QTreeWidgetItem(self.tree_regs)
+            item0.svd = reg
+            item0.setText(reg_col, reg["name"])
+            self.reg_edit = RegEdit(reg)
+            #self.reg_edit.editingFinished.connect(self.reg_editing_finished)
+            self.tree_regs.setItemWidget(item0, val_col, self.reg_edit)
+            self.tree_regs.addTopLevelItem(item0)
+            for field in reg["fields"]:
+                item1 = QTreeWidgetItem(item0)
+                item1.svd = field
+                item1.setText(reg_col, field["name"])
+                self.tree_regs.setItemWidget(item1, val_col, self.reg_edit.fields[field["name"]])
+                item0.addChild(item1)
+        self.vert_layout.addWidget(self.tree_regs)
+        # label with register/field description
+        self.lab_info = QLabel(self)
+        self.lab_info.setMaximumSize(QtCore.QSize(16777215, 40))
+        self.lab_info.setMinimumSize(QtCore.QSize(16777215, 40))
+        self.lab_info.setText("")
+        self.lab_info.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
+                                              QtCore.Qt.TextSelectableByMouse)
+        self.vert_layout.addWidget(self.lab_info)
+
+    def tree_regs_selection_changed(self):
+        tree_item = self.tree_regs.selectedItems()[0]
+        name = tree_item.svd["name"]
+        descr = tree_item.svd["description"]
+        addr = tree_item.svd["address_offset"]
+        if "access" in tree_item.svd.keys() and tree_item.svd["access"]:
+            temp = tree_item.svd["access"]
+            access = "<%s>" % (temp.split("-")[0][0] + temp.split("-")[1][0]).upper()
+        else:
+            access = ""
+        if "msb" in tree_item.svd.keys():
+            bits = "[%d:%d]" % (tree_item.svd["msb"],
+                                tree_item.svd["lsb"])
+        else:
+            bits = ""
+        self.lab_info.setText("(0x%08x)%s%s : %s\n%s" % (addr, bits, access, name, descr))
 
 
 # -- Main window --------------------------------------------------------------
@@ -208,61 +279,13 @@ class MainWindow(QMainWindow):
             if sender_name == periph["name"]:
                 periph_num = self.svd_file.device.index(periph)
                 periph_name = self.svd_file.device[periph_num]["name"]
-                periph_descr = self.svd_file.device[periph_num]["description"]
                 break
 
         if (self.ui.tabs_device.findChild(QWidget, periph_name)):
             self.ui.tabs_device.setCurrentWidget(self.ui.tabs_device.findChild(QWidget, periph_name))
         else:
-            # create new tab
-            page_periph = QWidget()
-            page_periph.setObjectName(periph_name)
-            # vertical layout inside
-            page_periph.vert_layout = QVBoxLayout(page_periph)
-            page_periph.vert_layout.setContentsMargins(6, 6, 6, 6)
-            page_periph.vert_layout.setSpacing(6)
-            # label with peripheral description
-            page_periph.lab_periph_descr = QLabel(page_periph)
-            page_periph.lab_periph_descr.setText(periph_descr)
-            page_periph.lab_periph_descr.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
-                                                                 QtCore.Qt.TextSelectableByMouse)
-            page_periph.vert_layout.addWidget(page_periph.lab_periph_descr)
-            # tree widget for displaying regs
-            reg_col = 0
-            val_col = 1
-            page_periph.tree_regs = QTreeWidget(page_periph)
-            page_periph.tree_regs.itemSelectionChanged.connect(self.tree_regs_selection_changed)
-            page_periph.tree_regs.headerItem().setText(reg_col, "Register")
-            page_periph.tree_regs.setColumnWidth(reg_col, 200)
-            page_periph.tree_regs.headerItem().setText(val_col, "Value")
-            for reg in self.svd_file.device[periph_num]["regs"]:
-                item0 = QTreeWidgetItem(page_periph.tree_regs)
-                item0.svd = reg
-                item0.setText(reg_col, reg["name"])
-                page_periph.reg_edit = RegEdit()
-                page_periph.tree_regs.setItemWidget(item0, val_col, page_periph.reg_edit)
-                page_periph.tree_regs.addTopLevelItem(item0)
-                for field in reg["fields"]:
-                    item1 = QTreeWidgetItem(item0)
-                    item1.svd = field
-                    item1.setText(reg_col, field["name"])
-                    field_enum_dict = {}
-                    if field["enums"]:
-                        for enum in field["enums"]:
-                            field_enum_dict[int(enum["value"])] = "(0x%X) %s : %s" % (int(enum["value"]), enum["name"], enum["description"])
-                    page_periph.field_edit = FieldEdit(field["msb"] - field["lsb"] + 1, field_enum_dict)
-                    page_periph.tree_regs.setItemWidget(item1, val_col, page_periph.field_edit)
-                    item0.addChild(item1)
-            page_periph.vert_layout.addWidget(page_periph.tree_regs)
-            # label with register/field description
-            page_periph.lab_info = QLabel(page_periph)
-            page_periph.lab_info.setMaximumSize(QtCore.QSize(16777215, 40))
-            page_periph.lab_info.setText("")
-            page_periph.lab_info.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
-                                                         QtCore.Qt.TextSelectableByMouse)
-            page_periph.vert_layout.addWidget(page_periph.lab_info)
-            # add this tab to the tab widget
-            self.ui.tabs_device.addTab(page_periph, periph_name)
+            periph_tab = PeriphTab(self.svd_file.device[periph_num])
+            self.ui.tabs_device.addTab(periph_tab, periph_name)
             self.ui.tabs_device.setCurrentIndex(self.ui.tabs_device.count() - 1)
 
     def tab_periph_close(self, num):
@@ -270,23 +293,6 @@ class MainWindow(QMainWindow):
         if widget is not None:
             widget.deleteLater()
         self.ui.tabs_device.removeTab(num)
-
-    def tree_regs_selection_changed(self):
-        tree_item = self.ui.tabs_device.currentWidget().tree_regs.selectedItems()[0]
-        name = tree_item.svd["name"]
-        descr = tree_item.svd["description"]
-        addr = tree_item.svd["address_offset"]
-        if "access" in tree_item.svd.keys() and tree_item.svd["access"]:
-            temp = tree_item.svd["access"]
-            access = "<%s>" % (temp.split("-")[0][0] + temp.split("-")[1][0]).upper()
-        else:
-            access = ""
-        if "msb" in tree_item.svd.keys():
-            bits = "[%d:%d]" % (tree_item.svd["msb"],
-                                tree_item.svd["lsb"])
-        else:
-            bits = ""
-        self.ui.tabs_device.currentWidget().lab_info.setText("(0x%08x)%s%s : %s\n%s" % (addr, bits, access, name, descr))
 
     # -- Application logic --
     def read_svd(self, path):
