@@ -94,7 +94,7 @@ class NumEdit(QLineEdit):
             self.setValidator(QRegExpValidator(QtCore.QRegExp(allowed_symbols)))
 
     def setDisplayFormat(self, displayBase, num=None):
-        if num:
+        if num is not None:
             self.setText(self.__formatNum(num, displayBase))
         else:
             self.setText(self.__formatNum(self.num(), displayBase))
@@ -122,6 +122,7 @@ class RegEdit(QWidget):
         self.horiz_layout.setContentsMargins(0, 0, 0, 0)
         self.horiz_layout.setSpacing(0)
         self.nedit_val = NumEdit(32)
+        self.nedit_val.editingFinished.connect(self.__value_changed)
         self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
         self.horiz_layout.addWidget(self.nedit_val)
         self.btn_read = QPushButton(self)
@@ -135,9 +136,35 @@ class RegEdit(QWidget):
         self.fields = {}
         for field in self.svd["fields"]:
             self.fields[field["name"]] = FieldEdit(field)
+            self.fields[field["name"]].valueChanged.connect(self.__field_value_changed)
+
+    def val(self):
+        return self.nedit_val.num()
+
+    def updateVal(self, val):
+        self.nedit_val.setNum(val)
+
+    def setVal(self, val):
+        self.updateVal(val)
+        self.__value_changed()
+
+    def __value_changed(self):
+        # if value changed we should set new fields values
+        for key in self.fields.keys():
+            val = self.val()
+            val = (val >> self.fields[key].svd["lsb"]) & ((2 ** self.fields[key].numBitWidth) - 1)
+            self.fields[key].setVal(val)
+
+    def __field_value_changed(self):
+        # if field value changed we should set update reg value
+        val = self.val() & ~(((2 ** self.sender().numBitWidth) - 1) << self.sender().svd["lsb"])
+        val = val | (self.sender().val() << self.sender().svd["lsb"])
+        self.updateVal(val)
 
 
 class FieldEdit(QWidget):
+    valueChanged = QtCore.pyqtSignal()
+
     def __init__(self, svd_field):
         QWidget.__init__(self)
         self.svd = svd_field
@@ -148,20 +175,61 @@ class FieldEdit(QWidget):
         if self.numBitWidth == 1:
             self.isSingleBitField = True
             self.chbox_val = QCheckBox(self)
+            self.chbox_val.stateChanged.connect(self.__value_changed)
             self.horiz_layout.addWidget(self.chbox_val)
         else:
             self.isSingleBitField = False
             self.nedit_val = NumEdit(self.numBitWidth)
+            self.nedit_val.editingFinished.connect(self.__value_changed)
             self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
             self.horiz_layout.addWidget(self.nedit_val)
         if self.svd["enums"]:
+            self.isEnums = True
             self.nedit_val.setMinimumSize(QtCore.QSize(100, 20))
             self.nedit_val.setMaximumSize(QtCore.QSize(100, 20))
             self.combo_enum = QComboBox(self)
+            self.combo_enum.currentIndexChanged.connect(self.__enum_value_changed)
+            self.combo_enum.values = []
             for enum in self.svd["enums"]:
-                self.combo_enum.addItem("(0x%X) %s : %s" % (int(enum["value"]), enum["name"], enum["description"]))
+                self.combo_enum.values += [int(enum["value"])]
+                self.combo_enum.addItem("(0x%x) %s : %s" % (int(enum["value"]), enum["name"], enum["description"]))
             self.combo_enum.setMaximumSize(QtCore.QSize(16777215, 20))
             self.horiz_layout.addWidget(self.combo_enum)
+        else:
+            self.isEnums = False
+
+    def val(self):
+        if self.numBitWidth == 1:
+            if self.chbox_val.checkState():
+                return 1
+            else:
+                return 0
+        else:
+            return self.nedit_val.num()
+
+    def setVal(self, val):
+        if self.numBitWidth == 1:
+            if val:
+                self.chbox_val.setCheckState(QtCore.Qt.Checked)
+            else:
+                self.chbox_val.setCheckState(QtCore.Qt.Unchecked)
+        else:
+            self.nedit_val.setNum(val)
+        self.__value_changed()
+
+    def __value_changed(self, value=None):
+        if self.isEnums:
+            try:
+                if self.val() != self.combo_enum.values[self.combo_enum.currentIndex()]:
+                    self.combo_enum.setCurrentIndex(self.combo_enum.values.index(self.val()))
+            except ValueError:
+                self.combo_enum.setCurrentIndex(-1)
+        self.valueChanged.emit()
+
+    def __enum_value_changed(self, currentIndex):
+        if self.isEnums and currentIndex != -1:
+            if self.val() != self.combo_enum.values[currentIndex]:
+                self.setVal(self.combo_enum.values[currentIndex])
 
 
 class PeriphTab(QWidget):
@@ -192,7 +260,6 @@ class PeriphTab(QWidget):
             item0.svd = reg
             item0.setText(reg_col, reg["name"])
             self.reg_edit = RegEdit(reg)
-            #self.reg_edit.editingFinished.connect(self.reg_editing_finished)
             self.tree_regs.setItemWidget(item0, val_col, self.reg_edit)
             self.tree_regs.addTopLevelItem(item0)
             for field in reg["fields"]:
