@@ -17,7 +17,7 @@ from PyQt5 import QtCore
 from PyQt5.QtGui import QCursor, QRegExpValidator, QIntValidator
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QWidget, QComboBox, QCheckBox,
                              QFileDialog, QVBoxLayout, QHBoxLayout, QLabel, QTreeWidget,
-                             QTreeWidgetItem, QLineEdit, QAction, QMenu, QPushButton)
+                             QTreeWidgetItem, QLineEdit, QAction, QMenu, QPushButton, QSizePolicy)
 from ui_main import Ui_MainWindow
 from ui_about import Ui_Dialog
 
@@ -229,10 +229,12 @@ class FieldEdit(QWidget):
             self.horiz_layout.addWidget(self.combo_enum)
             if self.num_bwidth == 1:
                 self.chbox_val.setMinimumSize(QtCore.QSize(100, 20))
-                self.chbox_val.setMaximumSize(QtCore.QSize(100, 20))
+                self.chbox_val.setMaximumSize(QtCore.QSize(16777215, 20))
+                self.chbox_val.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed))
             else:
                 self.nedit_val.setMinimumSize(QtCore.QSize(100, 20))
-                self.nedit_val.setMaximumSize(QtCore.QSize(100, 20))
+                self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
+                self.nedit_val.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed))
         else:
             self.is_enums = False
 
@@ -253,7 +255,6 @@ class FieldEdit(QWidget):
 
     # -- API --
     def val(self):
-        print(self.num_bwidth)
         if self.num_bwidth == 1:
             if self.chbox_val.checkState():
                 return 1
