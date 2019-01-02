@@ -28,53 +28,58 @@ VERSION = "0.1"
 
 # -- Custom widgets -----------------------------------------------------------
 class NumEdit(QLineEdit):
-    def __init__(self, numBitWidth=32):
+    def __init__(self, num_bwidth=32):
         QLineEdit.__init__(self)
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self.__contextMenu)
-        self.__numBitWidth = numBitWidth
-        self.__displayBase = 16
+        self.customContextMenuRequested.connect(self.handle_context_menu_requested)
+        self.__num_bwidth = num_bwidth
+        self.__display_base = 16
         self.setText("0")
         self.setDisplayFormat(16)
 
-    def __contextMenu(self, pos):
+    # -- Slots --
+    def handle_context_menu_requested(self, pos):
         self.menu = self.createStandardContextMenu()
 
         self.menu.act_to_dec = QAction("Convert to Dec")
-        self.menu.act_to_dec.triggered.connect(lambda: self.setDisplayFormat(10))
+        self.menu.act_to_dec.triggered.connect(lambda: self.handle_act_convert_triggered(10))
         self.menu.act_to_hex = QAction("Convert to Hex")
-        self.menu.act_to_hex.triggered.connect(lambda: self.setDisplayFormat(16))
+        self.menu.act_to_hex.triggered.connect(lambda: self.handle_act_convert_triggered(16))
         self.menu.act_to_bin = QAction("Convert to Bin")
-        self.menu.act_to_bin.triggered.connect(lambda: self.setDisplayFormat(2))
+        self.menu.act_to_bin.triggered.connect(lambda: self.handle_act_convert_triggered(2))
         self.menu.insertActions(self.menu.actions()[0],
                                 [self.menu.act_to_dec, self.menu.act_to_hex, self.menu.act_to_bin])
         self.menu.insertSeparator(self.menu.actions()[3])
 
         self.menu.exec_(QCursor.pos())
 
-    def numBitWidth(self):
-        return self.__numBitWidth
+    def handle_act_convert_triggered(self, base):
+        self.setDisplayFormat(base)
 
-    def setNumBitWidth(self, numBitWidth):
-        self.__numBitWidth = numBitWidth
+    # -- API --
+    def numBitWidth(self):
+        return self.__num_bwidth
+
+    def setNumBitWidth(self, width):
+        self.__num_bwidth = width
 
     def num(self):
         return int(self.text().replace(" ", ""), self.displayBase())
 
-    def setNum(self, num, displayBase=None):
-        if displayBase:
-            self.setDisplayFormat(displayBase, num)
+    def setNum(self, num, base=None):
+        if base:
+            self.setDisplayFormat(base, num)
         else:
             self.setDisplayFormat(self.displayBase(), num)
 
     def displayBase(self):
-        return self.__displayBase
+        return self.__display_base
 
-    def setDisplayValidator(self, displayBase):
-        if displayBase == 10:
+    def setDisplayValidator(self, base):
+        if base == 10:
             max_int = 2**self.numBitWidth()
             self.setValidator(QIntValidator(0, max_int - 1))
-        elif displayBase == 16:
+        elif base == 16:
             high_part = ""
             low_part = ""
             if self.numBitWidth() % 4 > 0:
@@ -83,7 +88,7 @@ class NumEdit(QLineEdit):
                 low_part = "[0-9A-Fa-f]{%d}" % int(self.numBitWidth() / 4)
             allowed_symbols = "0x" + high_part + low_part
             self.setValidator(QRegExpValidator(QtCore.QRegExp(allowed_symbols)))
-        elif displayBase == 2:
+        elif base == 2:
             high_part = ""
             low_part = ""
             if self.numBitWidth() % 4 > 0:
@@ -93,15 +98,15 @@ class NumEdit(QLineEdit):
             allowed_symbols = "^" + high_part + low_part + "$"
             self.setValidator(QRegExpValidator(QtCore.QRegExp(allowed_symbols)))
 
-    def setDisplayFormat(self, displayBase, num=None):
+    def setDisplayFormat(self, base, num=None):
         if num is not None:
-            self.setText(self.__formatNum(num, displayBase))
+            self.setText(self.__format_num(num, base))
         else:
-            self.setText(self.__formatNum(self.num(), displayBase))
-        self.setDisplayValidator(displayBase)
-        self.__displayBase = displayBase
+            self.setText(self.__format_num(self.num(), base))
+        self.setDisplayValidator(base)
+        self.__display_base = base
 
-    def __formatNum(self, num, base):
+    def __format_num(self, num, base):
         if base == 10:
             return str(num)
         elif base == 16:
@@ -111,7 +116,7 @@ class NumEdit(QLineEdit):
             bin_str = format(num, '0%db' % self.numBitWidth())
             return ' '.join(([bin_str[::-1][i:i + chunk_n] for i in range(0, len(bin_str), chunk_n)]))[::-1]
         else:
-            raise ValueError("Can't __formatNum() - unknown base")
+            raise ValueError("Can't __format_num() - unknown base")
 
 
 class RegEdit(QWidget):
@@ -122,7 +127,7 @@ class RegEdit(QWidget):
         self.horiz_layout.setContentsMargins(0, 0, 0, 0)
         self.horiz_layout.setSpacing(0)
         self.nedit_val = NumEdit(32)
-        self.nedit_val.editingFinished.connect(self.__value_changed)
+        self.nedit_val.editingFinished.connect(self.handle_reg_value_changed)
         self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
         self.horiz_layout.addWidget(self.nedit_val)
         self.btn_read = QPushButton(self)
@@ -136,30 +141,32 @@ class RegEdit(QWidget):
         self.fields = {}
         for field in self.svd["fields"]:
             self.fields[field["name"]] = FieldEdit(field)
-            self.fields[field["name"]].valueChanged.connect(self.__field_value_changed)
+            self.fields[field["name"]].valueChanged.connect(self.handle_field_value_changed)
 
-    def val(self):
-        return self.nedit_val.num()
-
-    def updateVal(self, val):
-        self.nedit_val.setNum(val)
-
-    def setVal(self, val):
-        self.updateVal(val)
-        self.__value_changed()
-
-    def __value_changed(self):
+    # -- Slots --
+    def handle_reg_value_changed(self):
         # if value changed we should set new fields values
         for key in self.fields.keys():
             val = self.val()
-            val = (val >> self.fields[key].svd["lsb"]) & ((2 ** self.fields[key].numBitWidth) - 1)
+            val = (val >> self.fields[key].svd["lsb"]) & ((2 ** self.fields[key].num_bwidth) - 1)
             self.fields[key].setVal(val)
 
-    def __field_value_changed(self):
+    def handle_field_value_changed(self):
         # if field value changed we should set update reg value
-        val = self.val() & ~(((2 ** self.sender().numBitWidth) - 1) << self.sender().svd["lsb"])
+        val = self.val() & ~(((2 ** self.sender().num_bwidth) - 1) << self.sender().svd["lsb"])
         val = val | (self.sender().val() << self.sender().svd["lsb"])
-        self.updateVal(val)
+        self.__update_val(val)
+
+    # -- API --
+    def val(self):
+        return self.nedit_val.num()
+
+    def __update_val(self, val):
+        self.nedit_val.setNum(val)
+
+    def setVal(self, val):
+        self.__update_val(val)
+        self.handle_reg_value_changed()
 
 
 class FieldEdit(QWidget):
@@ -171,35 +178,65 @@ class FieldEdit(QWidget):
         self.horiz_layout = QHBoxLayout(self)
         self.horiz_layout.setContentsMargins(0, 0, 0, 0)
         self.horiz_layout.setSpacing(6)
-        self.numBitWidth = self.svd["msb"] - self.svd["lsb"] + 1
-        if self.numBitWidth == 1:
-            self.isSingleBitField = True
+        if self.svd["access"] == "read-only":
+            self.is_enabled = False
+        else:
+            self.is_enabled = True
+
+        self.num_bwidth = self.svd["msb"] - self.svd["lsb"] + 1
+
+        if self.num_bwidth == 1:
             self.chbox_val = QCheckBox(self)
-            self.chbox_val.stateChanged.connect(self.__value_changed)
+            self.chbox_val.setEnabled(self.is_enabled)
+            self.chbox_val.setMaximumSize(QtCore.QSize(16777215, 20))
+            self.chbox_val.stateChanged.connect(self.handle_field_value_changed)
             self.horiz_layout.addWidget(self.chbox_val)
         else:
-            self.isSingleBitField = False
-            self.nedit_val = NumEdit(self.numBitWidth)
-            self.nedit_val.editingFinished.connect(self.__value_changed)
+            self.nedit_val = NumEdit(self.num_bwidth)
+            self.nedit_val.setEnabled(self.is_enabled)
+            self.nedit_val.editingFinished.connect(self.handle_field_value_changed)
             self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
             self.horiz_layout.addWidget(self.nedit_val)
+
         if self.svd["enums"]:
-            self.isEnums = True
-            self.nedit_val.setMinimumSize(QtCore.QSize(100, 20))
-            self.nedit_val.setMaximumSize(QtCore.QSize(100, 20))
+            self.is_enums = True
             self.combo_enum = QComboBox(self)
-            self.combo_enum.currentIndexChanged.connect(self.__enum_value_changed)
+            self.combo_enum.setEnabled(self.is_enabled)
+            self.combo_enum.currentIndexChanged.connect(self.handle_enum_value_changed)
             self.combo_enum.values = []
             for enum in self.svd["enums"]:
                 self.combo_enum.values += [int(enum["value"])]
                 self.combo_enum.addItem("(0x%x) %s : %s" % (int(enum["value"]), enum["name"], enum["description"]))
             self.combo_enum.setMaximumSize(QtCore.QSize(16777215, 20))
             self.horiz_layout.addWidget(self.combo_enum)
+            if self.num_bwidth == 1:
+                self.chbox_val.setMinimumSize(QtCore.QSize(100, 20))
+                self.chbox_val.setMaximumSize(QtCore.QSize(100, 20))
+            else:
+                self.nedit_val.setMinimumSize(QtCore.QSize(100, 20))
+                self.nedit_val.setMaximumSize(QtCore.QSize(100, 20))
         else:
-            self.isEnums = False
+            self.is_enums = False
 
+    # -- Slots --
+    def handle_field_value_changed(self, value=None):
+        if self.is_enums:
+            try:
+                if self.val() != self.combo_enum.values[self.combo_enum.currentIndex()]:
+                    self.combo_enum.setCurrentIndex(self.combo_enum.values.index(self.val()))
+            except ValueError:
+                self.combo_enum.setCurrentIndex(-1)
+        self.valueChanged.emit()
+
+    def handle_enum_value_changed(self, currentIndex):
+        if self.is_enums and currentIndex != -1:
+            if self.val() != self.combo_enum.values[currentIndex]:
+                self.setVal(self.combo_enum.values[currentIndex])
+
+    # -- API --
     def val(self):
-        if self.numBitWidth == 1:
+        print(self.num_bwidth)
+        if self.num_bwidth == 1:
             if self.chbox_val.checkState():
                 return 1
             else:
@@ -208,28 +245,14 @@ class FieldEdit(QWidget):
             return self.nedit_val.num()
 
     def setVal(self, val):
-        if self.numBitWidth == 1:
+        if self.num_bwidth == 1:
             if val:
                 self.chbox_val.setCheckState(QtCore.Qt.Checked)
             else:
                 self.chbox_val.setCheckState(QtCore.Qt.Unchecked)
         else:
             self.nedit_val.setNum(val)
-        self.__value_changed()
-
-    def __value_changed(self, value=None):
-        if self.isEnums:
-            try:
-                if self.val() != self.combo_enum.values[self.combo_enum.currentIndex()]:
-                    self.combo_enum.setCurrentIndex(self.combo_enum.values.index(self.val()))
-            except ValueError:
-                self.combo_enum.setCurrentIndex(-1)
-        self.valueChanged.emit()
-
-    def __enum_value_changed(self, currentIndex):
-        if self.isEnums and currentIndex != -1:
-            if self.val() != self.combo_enum.values[currentIndex]:
-                self.setVal(self.combo_enum.values[currentIndex])
+        self.handle_field_value_changed()
 
 
 class PeriphTab(QWidget):
@@ -251,7 +274,7 @@ class PeriphTab(QWidget):
         reg_col = 0
         val_col = 1
         self.tree_regs = QTreeWidget(self)
-        self.tree_regs.itemSelectionChanged.connect(self.tree_regs_selection_changed)
+        self.tree_regs.itemSelectionChanged.connect(self.handle_tree_selection_changed)
         self.tree_regs.headerItem().setText(reg_col, "Register")
         self.tree_regs.setColumnWidth(reg_col, 200)
         self.tree_regs.headerItem().setText(val_col, "Value")
@@ -278,7 +301,8 @@ class PeriphTab(QWidget):
                                               QtCore.Qt.TextSelectableByMouse)
         self.vert_layout.addWidget(self.lab_info)
 
-    def tree_regs_selection_changed(self):
+    # -- Slots --
+    def handle_tree_selection_changed(self):
         tree_item = self.tree_regs.selectedItems()[0]
         name = tree_item.svd["name"]
         descr = tree_item.svd["description"]
@@ -321,13 +345,13 @@ class MainWindow(QMainWindow):
         self.openocd_tn = OpenOCDTelnet()
 
     # -- Slots --
-    def act_connect_triggered(self):
+    def handle_act_connect_triggered(self):
         if self.openocd_tn.is_opened:
             self.disconnect_openocd()
         else:
             self.connect_openocd()
 
-    def act_open_svd_triggered(self):
+    def handle_act_open_svd_triggered(self):
         options = QFileDialog.Options()
         fileName, _ = QFileDialog.getOpenFileName(self,
                                                   "Open SVD file", "", "SVD Files (*.svd *.SVD *.xml)",
@@ -335,12 +359,12 @@ class MainWindow(QMainWindow):
         if fileName:
             self.read_svd(fileName)
 
-    def act_about_triggered(self):
+    def handle_act_about_triggered(self):
         text = self.about_dialog.ui.lab_version.text().replace("x.x", VERSION)
         self.about_dialog.ui.lab_version.setText(text)
         self.about_dialog.exec_()
 
-    def act_periph_triggered(self):
+    def handle_act_periph_triggered(self):
         sender_name = self.sender().objectName()
         for periph in self.svd_file.device:
             if sender_name == periph["name"]:
@@ -355,13 +379,13 @@ class MainWindow(QMainWindow):
             self.ui.tabs_device.addTab(periph_tab, periph_name)
             self.ui.tabs_device.setCurrentIndex(self.ui.tabs_device.count() - 1)
 
-    def tab_periph_close(self, num):
+    def handle_tab_periph_close(self, num):
         widget = self.ui.tabs_device.widget(num)
         if widget is not None:
             widget.deleteLater()
         self.ui.tabs_device.removeTab(num)
 
-    # -- Application logic --
+    # -- Application specific code --
     def read_svd(self, path):
         try:
             self.svd_file = SVDReader(path)
@@ -374,7 +398,7 @@ class MainWindow(QMainWindow):
                     self.ui.act_periph += [QAction(self)]
                     self.ui.act_periph[-1].setObjectName(periph["name"])
                     self.ui.act_periph[-1].setText(periph["name"])
-                    self.ui.act_periph[-1].triggered.connect(self.act_periph_triggered)
+                    self.ui.act_periph[-1].triggered.connect(self.handle_act_periph_triggered)
                     self.ui.menuView.addAction(self.ui.act_periph[-1])
                 else:
                     if periph["group_name"] in [menu.objectName() for menu in self.ui.menu_periph]:
@@ -389,7 +413,7 @@ class MainWindow(QMainWindow):
                     self.ui.menu_periph[menu_num].act_periph += [QAction(self)]
                     self.ui.menu_periph[menu_num].act_periph[-1].setObjectName(periph["name"])
                     self.ui.menu_periph[menu_num].act_periph[-1].setText(periph["name"])
-                    self.ui.menu_periph[menu_num].act_periph[-1].triggered.connect(self.act_periph_triggered)
+                    self.ui.menu_periph[menu_num].act_periph[-1].triggered.connect(self.handle_act_periph_triggered)
                     self.ui.menu_periph[menu_num].addAction(self.ui.menu_periph[menu_num].act_periph[-1])
         except:
             self.ui.statusBar.showMessage("Can't open %s - file is corrupted!" % os.path.basename(path))

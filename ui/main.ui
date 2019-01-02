@@ -193,7 +193,7 @@
    <sender>act_open_svd</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
-   <slot>act_open_svd_triggered()</slot>
+   <slot>handle_act_open_svd_triggered()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -209,7 +209,7 @@
    <sender>act_about</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
-   <slot>act_about_triggered()</slot>
+   <slot>handle_act_about_triggered()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -225,7 +225,7 @@
    <sender>tabs_device</sender>
    <signal>tabCloseRequested(int)</signal>
    <receiver>MainWindow</receiver>
-   <slot>tab_periph_close(int)</slot>
+   <slot>handle_tab_periph_close(int)</slot>
    <hints>
     <hint type="sourcelabel">
      <x>299</x>
@@ -241,7 +241,7 @@
    <sender>act_connect</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
-   <slot>act_connect_triggered()</slot>
+   <slot>handle_act_connect_triggered()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -255,9 +255,9 @@
   </connection>
  </connections>
  <slots>
-  <slot>act_open_svd_triggered()</slot>
-  <slot>act_about_triggered()</slot>
-  <slot>tab_periph_close(int)</slot>
-  <slot>act_connect_triggered()</slot>
+  <slot>handle_act_open_svd_triggered()</slot>
+  <slot>handle_act_about_triggered()</slot>
+  <slot>handle_tab_periph_close(int)</slot>
+  <slot>handle_act_connect_triggered()</slot>
  </slots>
 </ui>

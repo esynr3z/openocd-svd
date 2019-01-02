@@ -80,10 +80,10 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         self.tabs_device.setCurrentIndex(-1)
         self.act_quit.triggered.connect(MainWindow.close)
-        self.act_open_svd.triggered.connect(MainWindow.act_open_svd_triggered)
-        self.act_about.triggered.connect(MainWindow.act_about_triggered)
-        self.tabs_device.tabCloseRequested['int'].connect(MainWindow.tab_periph_close)
-        self.act_connect.triggered.connect(MainWindow.act_connect_triggered)
+        self.act_open_svd.triggered.connect(MainWindow.handle_act_open_svd_triggered)
+        self.act_about.triggered.connect(MainWindow.handle_act_about_triggered)
+        self.tabs_device.tabCloseRequested['int'].connect(MainWindow.handle_tab_periph_close)
+        self.act_connect.triggered.connect(MainWindow.handle_act_connect_triggered)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
