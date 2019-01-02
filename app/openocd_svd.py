@@ -36,6 +36,24 @@ class NumEdit(QLineEdit):
         self.__display_base = 16
         self.setText("0")
         self.setDisplayFormat(16)
+        self.is_focused = False
+
+    # -- Events --
+    def focusInEvent(self, event):
+        self.is_focused = True
+        QLineEdit.focusInEvent(self, event)
+
+    def focusOutEvent(self, event):
+        self.is_focused = False
+        QLineEdit.focusOutEvent(self, event)
+
+    def wheelEvent(self, event):
+        if self.is_focused:
+            delta = 1 if event.angleDelta().y() > 0 else -1
+            if 2**self.numBitWidth() > (self.num() + delta) >= 0:
+                self.setNum(self.num() + delta)
+            event.accept()
+            self.editingFinished.emit()
 
     # -- Slots --
     def handle_context_menu_requested(self, pos):
