@@ -146,7 +146,9 @@ class RegEdit(QWidget):
         self.horiz_layout.setSpacing(0)
         self.nedit_val = NumEdit(32)
         self.nedit_val.editingFinished.connect(self.handle_reg_value_changed)
+        self.nedit_val.setMinimumSize(QtCore.QSize(320, 20))
         self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
+        self.nedit_val.setSizePolicy(QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed))
         self.horiz_layout.addWidget(self.nedit_val)
         self.btn_read = QPushButton(self)
         self.btn_read.setText("R")
@@ -228,13 +230,9 @@ class FieldEdit(QWidget):
             self.combo_enum.setMaximumSize(QtCore.QSize(16777215, 20))
             self.horiz_layout.addWidget(self.combo_enum)
             if self.num_bwidth == 1:
-                self.chbox_val.setMinimumSize(QtCore.QSize(100, 20))
-                self.chbox_val.setMaximumSize(QtCore.QSize(16777215, 20))
-                self.chbox_val.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed))
+                self.chbox_val.setMaximumSize(QtCore.QSize(320, 20))
             else:
-                self.nedit_val.setMinimumSize(QtCore.QSize(100, 20))
-                self.nedit_val.setMaximumSize(QtCore.QSize(16777215, 20))
-                self.nedit_val.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed))
+                self.nedit_val.setMaximumSize(QtCore.QSize(320, 20))
         else:
             self.is_enums = False
 
