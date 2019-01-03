@@ -15,7 +15,7 @@ import functools
 from svd import SVDReader
 from openocd import OpenOCDTelnet
 from PyQt5 import QtCore
-from PyQt5.QtGui import QCursor, QRegExpValidator, QIntValidator
+from PyQt5.QtGui import QCursor, QRegExpValidator, QIntValidator, QColor
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QWidget, QComboBox, QCheckBox,
                              QFileDialog, QVBoxLayout, QHBoxLayout, QLabel, QTreeWidget,
                              QTreeWidgetItem, QLineEdit, QAction, QMenu, QPushButton, QSizePolicy)
@@ -300,6 +300,9 @@ class PeriphTab(QWidget):
             item0 = QTreeWidgetItem(self.tree_regs)
             item0.svd = reg
             item0.setText(reg_col, reg["name"])
+            background = QColor(240, 240, 240)
+            item0.setBackground(0, background)
+            item0.setBackground(1, background)
             reg_edit = RegEdit(reg)
             self.tree_regs.setItemWidget(item0, val_col, reg_edit)
             self.tree_regs.addTopLevelItem(item0)
