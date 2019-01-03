@@ -11,6 +11,7 @@ Run (SVD path argument is optional):
 # -- Imports ------------------------------------------------------------------
 import sys
 import os
+import functools
 from svd import SVDReader
 from openocd import OpenOCDTelnet
 from PyQt5 import QtCore
@@ -299,14 +300,14 @@ class PeriphTab(QWidget):
             item0 = QTreeWidgetItem(self.tree_regs)
             item0.svd = reg
             item0.setText(reg_col, reg["name"])
-            self.reg_edit = RegEdit(reg)
-            self.tree_regs.setItemWidget(item0, val_col, self.reg_edit)
+            reg_edit = RegEdit(reg)
+            self.tree_regs.setItemWidget(item0, val_col, reg_edit)
             self.tree_regs.addTopLevelItem(item0)
             for field in reg["fields"]:
                 item1 = QTreeWidgetItem(item0)
                 item1.svd = field
                 item1.setText(reg_col, field["name"])
-                self.tree_regs.setItemWidget(item1, val_col, self.reg_edit.fields[field["name"]])
+                self.tree_regs.setItemWidget(item1, val_col, reg_edit.fields[field["name"]])
                 item0.addChild(item1)
         self.vert_layout.addWidget(self.tree_regs)
         # label with register/field description
@@ -393,8 +394,41 @@ class MainWindow(QMainWindow):
             self.ui.tabs_device.setCurrentWidget(self.ui.tabs_device.findChild(QWidget, periph_name))
         else:
             periph_tab = PeriphTab(self.svd_file.device[periph_num])
+            for i in range(0, periph_tab.tree_regs.topLevelItemCount()):
+                reg = periph_tab.tree_regs.itemWidget(periph_tab.tree_regs.topLevelItem(i), 1)
+                reg.btn_read.clicked.connect(functools.partial(self.handle_btn_read_clicked, index=i))
+                reg.btn_write.clicked.connect(functools.partial(self.handle_btn_write_clicked, index=i))
             self.ui.tabs_device.addTab(periph_tab, periph_name)
             self.ui.tabs_device.setCurrentIndex(self.ui.tabs_device.count() - 1)
+
+    def handle_btn_read_clicked(self, index):
+        periph = self.ui.tabs_device.currentWidget()
+        reg = periph.tree_regs.itemWidget(periph.tree_regs.topLevelItem(index), 1)
+        addr = periph.svd["base_address"] + reg.svd["address_offset"]
+        try:
+            reg.setVal(self.openocd_tn.read_mem(addr))
+            self.ui.statusBar.showMessage("Read %s.%s @ 0x%08X - OK" % (periph.svd["name"],
+                                                                        reg.svd["name"],
+                                                                        addr))
+        except RuntimeError:
+            self.ui.statusBar.showMessage("Read %s.%s @ 0x%08X - Error" % (periph.svd["name"],
+                                                                           reg.svd["name"],
+                                                                           addr))
+
+    def handle_btn_write_clicked(self, index):
+        periph = self.ui.tabs_device.currentWidget()
+        reg = periph.tree_regs.itemWidget(periph.tree_regs.topLevelItem(index), 1)
+        addr = periph.svd["base_address"] + reg.svd["address_offset"]
+        try:
+            self.openocd_tn.write_mem(addr, reg.val())
+            self.ui.statusBar.showMessage("Write %s.%s @ 0x%08X - OK" % (periph.svd["name"],
+                                                                         reg.svd["name"],
+                                                                         addr))
+
+        except RuntimeError:
+            self.ui.statusBar.showMessage("Write %s.%s @ 0x%08X - Error" % (periph.svd["name"],
+                                                                            reg.svd["name"],
+                                                                            addr))
 
     def handle_tab_periph_close(self, num):
         widget = self.ui.tabs_device.widget(num)

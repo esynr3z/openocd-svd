@@ -33,10 +33,16 @@ class OpenOCDTelnet:
             return False
 
     def read_data(self):
-        return self.telnet.read_until(b"\r\n\r", self.timeout).decode()
+        if self.is_opened:
+            return self.telnet.read_until(b"\r\n\r", self.timeout).decode()
+        else:
+            raise RuntimeError("Can't read data - OpenOCD telnet is not opened!")
 
     def write_data(self, data):
-        self.telnet.write(("%s\r\n" % data).encode())
+        if self.is_opened:
+            self.telnet.write(("%s\r\n" % data).encode())
+        else:
+            raise RuntimeError("Can't write data - OpenOCD telnet is not opened!")
 
     def send_cmd(self, cmd):
         self.write_data(cmd)
