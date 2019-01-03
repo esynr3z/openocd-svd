@@ -374,7 +374,7 @@ class MainWindow(QMainWindow):
                                                   "Open SVD file", "", "SVD Files (*.svd *.SVD *.xml)",
                                                   options=options)
         if fileName:
-            self.read_svd(fileName)
+            self.open_svd(fileName)
 
     def handle_act_about_triggered(self):
         text = self.about_dialog.ui.lab_version.text().replace("x.x", VERSION)
@@ -403,13 +403,23 @@ class MainWindow(QMainWindow):
         self.ui.tabs_device.removeTab(num)
 
     # -- Application specific code --
-    def read_svd(self, path):
+    def close_svd(self):
+        self.svd_file = None
+        self.svd_path = None
+        title = self.windowTitle()
+        title = title.split(" - ")[-1]
+        self.setWindowTitle(title)
+        while self.ui.tabs_device.currentIndex() != -1:
+            self.handle_tab_periph_close(self.ui.tabs_device.currentIndex())
+        self.ui.menuView.clear()
+        self.ui.menu_periph.clear()
+
+    def open_svd(self, path):
         try:
+            self.close_svd()
             self.svd_file = SVDReader(path)
             self.svd_path = path
-            title = self.windowTitle()
-            title = title.split(" - ")[-1]
-            self.setWindowTitle(os.path.basename(path) + " - " + title)
+            self.setWindowTitle(os.path.basename(path) + " - " + self.windowTitle())
             for periph in self.svd_file.device:
                 if periph["name"] == periph["group_name"]:
                     self.ui.act_periph += [QAction(self)]
@@ -456,6 +466,6 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     main_window = MainWindow()
     if len(sys.argv) > 1:
-        main_window.read_svd(sys.argv[1])
+        main_window.open_svd(sys.argv[1])
     main_window.show()
     sys.exit(app.exec_())
