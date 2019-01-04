@@ -24,7 +24,7 @@ from ui_about import Ui_Dialog
 
 
 # -- Global variables ---------------------------------------------------------
-VERSION = "0.1"
+VERSION = "0.5"
 
 
 # -- Custom widgets -----------------------------------------------------------
