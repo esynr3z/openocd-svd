@@ -4,18 +4,34 @@
 Read SVD file with cmsic-svd backend
 """
 
-import sys
 from operator import itemgetter
 from cmsis_svd.parser import SVDParser
+from cmsis_svd.parser import pkg_resources
 
 
 class SVDReader:
-    def __init__(self, path):
-        parser = [periph for periph in SVDParser.for_xml_file(path).get_device().peripherals]
+    def __init__(self):
+        self.device = []
 
+    def get_packed_list(self):
+        packed = []
+        vendors = pkg_resources.resource_listdir("cmsis_svd", "data")
+        for vendor in vendors:
+            filenames = [n for n in pkg_resources.resource_listdir("cmsis_svd", "data/%s" % vendor) if ".svd" in n]
+            packed += [{"vendor": vendor,
+                        "filenames": sorted(filenames)}]
+        return sorted(packed, key=lambda k: k['vendor'])
+
+    def parse_path(self, path):
+        self.__fill_device([periph for periph in SVDParser.for_xml_file(path).get_device().peripherals])
+
+    def parse_packed(self, vendor, filename):
+        self.__fill_device([periph for periph in SVDParser.for_packaged_svd(vendor, filename).get_device().peripherals])
+
+    def __fill_device(self, peripherals):
         # Read peripherals and their registers
         self.device = []
-        for periph in parser:
+        for periph in peripherals:
             self.device += [{"type": "periph",
                              "name": periph.name,
                              "description": periph.description,
@@ -47,9 +63,12 @@ class SVDReader:
                                 self.device[-1]["regs"][-1]["fields"][-1]["enums"] += [{"name": enum.name,
                                                                                         "description": enum.description,
                                                                                         "value": enum.value}]
-
         self.device = sorted(self.device, key=itemgetter('base_address'))
 
 
 if __name__ == "__main__":
-    svd_file = SVDReader(sys.argv[1])
+    from pprint import pprint
+
+    svd_reader = SVDReader()
+    pprint(svd_reader.get_packed_list())
+    device = svd_reader.parse_packed('STMicro', 'STM32F103xx.svd')

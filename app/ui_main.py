@@ -67,8 +67,12 @@ class Ui_MainWindow(object):
         self.act_about.setObjectName("act_about")
         self.act_connect = QtWidgets.QAction(MainWindow)
         self.act_connect.setObjectName("act_connect")
+        self.act_open_packed_svd = QtWidgets.QAction(MainWindow)
+        self.act_open_packed_svd.setObjectName("act_open_packed_svd")
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.act_open_svd)
+        self.menuFile.addAction(self.act_open_packed_svd)
+        self.menuFile.addSeparator()
         self.menuFile.addAction(self.act_connect)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.act_quit)
@@ -84,6 +88,7 @@ class Ui_MainWindow(object):
         self.act_about.triggered.connect(MainWindow.handle_act_about_triggered)
         self.tabs_device.tabCloseRequested['int'].connect(MainWindow.handle_tab_periph_close)
         self.act_connect.triggered.connect(MainWindow.handle_act_connect_triggered)
+        self.act_open_packed_svd.triggered.connect(MainWindow.handle_act_open_packed_svd_triggered)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -95,7 +100,7 @@ class Ui_MainWindow(object):
         self.act_quit.setText(_translate("MainWindow", "Quit"))
         self.act_quit.setStatusTip(_translate("MainWindow", "Quit the utility"))
         self.act_quit.setShortcut(_translate("MainWindow", "Ctrl+Q"))
-        self.act_open_svd.setText(_translate("MainWindow", "Open SVD file"))
+        self.act_open_svd.setText(_translate("MainWindow", "Open SVD from path"))
         self.act_open_svd.setStatusTip(_translate("MainWindow", "Open SVD file"))
         self.act_open_svd.setShortcut(_translate("MainWindow", "Ctrl+O"))
         self.act_about.setText(_translate("MainWindow", "About"))
@@ -103,6 +108,7 @@ class Ui_MainWindow(object):
         self.act_connect.setText(_translate("MainWindow", "Connect OpenOCD"))
         self.act_connect.setStatusTip(_translate("MainWindow", "Open/close connection to OpenOCD"))
         self.act_connect.setShortcut(_translate("MainWindow", "Ctrl+E"))
+        self.act_open_packed_svd.setText(_translate("MainWindow", "Open SVD from packed"))
 
 
 if __name__ == "__main__":

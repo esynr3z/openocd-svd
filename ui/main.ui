@@ -109,6 +109,8 @@
     </property>
     <addaction name="separator"/>
     <addaction name="act_open_svd"/>
+    <addaction name="act_open_packed_svd"/>
+    <addaction name="separator"/>
     <addaction name="act_connect"/>
     <addaction name="separator"/>
     <addaction name="act_quit"/>
@@ -142,7 +144,7 @@
   </action>
   <action name="act_open_svd">
    <property name="text">
-    <string>Open SVD file</string>
+    <string>Open SVD from path</string>
    </property>
    <property name="statusTip">
     <string>Open SVD file</string>
@@ -168,6 +170,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+E</string>
+   </property>
+  </action>
+  <action name="act_open_packed_svd">
+   <property name="text">
+    <string>Open SVD from packed</string>
    </property>
   </action>
  </widget>
@@ -253,11 +260,28 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>act_open_packed_svd</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>handle_act_open_packed_svd_triggered()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>383</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>handle_act_open_svd_triggered()</slot>
   <slot>handle_act_about_triggered()</slot>
   <slot>handle_tab_periph_close(int)</slot>
   <slot>handle_act_connect_triggered()</slot>
+  <slot>handle_act_open_packed_svd_triggered()</slot>
  </slots>
 </ui>

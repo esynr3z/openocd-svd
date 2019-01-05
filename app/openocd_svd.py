@@ -361,8 +361,7 @@ class MainWindow(QMainWindow):
         self.about_dialog.ui.setupUi(self.about_dialog)
 
         # Add some vars
-        self.svd_file = None
-        self.svd_path = None
+        self.svd_reader = SVDReader()
         self.openocd_tn = OpenOCDTelnet()
 
     # -- Slots --
@@ -378,7 +377,13 @@ class MainWindow(QMainWindow):
                                                   "Open SVD file", "", "SVD Files (*.svd *.SVD *.xml)",
                                                   options=options)
         if fileName:
-            self.open_svd(fileName)
+            self.open_svd_path(fileName)
+
+    def handle_act_open_packed_svd_triggered(self):
+        # here will be menu executed where vendor and filename will be chosen
+        vendor = "STMicro"
+        filename = 'STM32F103xx.svd'
+        self.open_svd_packed(vendor, filename)
 
     def handle_act_about_triggered(self):
         text = self.about_dialog.ui.lab_version.text().replace("x.x", VERSION)
@@ -387,16 +392,16 @@ class MainWindow(QMainWindow):
 
     def handle_act_periph_triggered(self):
         sender_name = self.sender().objectName()
-        for periph in self.svd_file.device:
+        for periph in self.svd_reader.device:
             if sender_name == periph["name"]:
-                periph_num = self.svd_file.device.index(periph)
-                periph_name = self.svd_file.device[periph_num]["name"]
+                periph_num = self.svd_reader.device.index(periph)
+                periph_name = self.svd_reader.device[periph_num]["name"]
                 break
 
         if (self.ui.tabs_device.findChild(QWidget, periph_name)):
             self.ui.tabs_device.setCurrentWidget(self.ui.tabs_device.findChild(QWidget, periph_name))
         else:
-            periph_tab = PeriphTab(self.svd_file.device[periph_num])
+            periph_tab = PeriphTab(self.svd_reader.device[periph_num])
             for i in range(0, periph_tab.tree_regs.topLevelItemCount()):
                 reg = periph_tab.tree_regs.itemWidget(periph_tab.tree_regs.topLevelItem(i), 1)
                 reg.btn_read.clicked.connect(functools.partial(self.handle_btn_read_clicked, index=i))
@@ -441,8 +446,6 @@ class MainWindow(QMainWindow):
 
     # -- Application specific code --
     def close_svd(self):
-        self.svd_file = None
-        self.svd_path = None
         title = self.windowTitle()
         title = title.split(" - ")[-1]
         self.setWindowTitle(title)
@@ -451,13 +454,26 @@ class MainWindow(QMainWindow):
         self.ui.menuView.clear()
         self.ui.menu_periph.clear()
 
-    def open_svd(self, path):
+    def open_svd_path(self, path):
         try:
             self.close_svd()
-            self.svd_file = SVDReader(path)
-            self.svd_path = path
+            self.svd_reader.parse_path(path)
             self.setWindowTitle(os.path.basename(path) + " - " + self.windowTitle())
-            for periph in self.svd_file.device:
+            self.__update_menu_view()
+        except:
+            self.ui.statusBar.showMessage("Can't open %s - file is corrupted!" % os.path.basename(path))
+
+    def open_svd_packed(self, vendor, filename):
+        try:
+            self.close_svd()
+            self.svd_reader.parse_packed(vendor, filename)
+            self.setWindowTitle(filename + " - " + self.windowTitle())
+            self.__update_menu_view()
+        except:
+            self.ui.statusBar.showMessage("Can't open %s - file is corrupted!" % filename)
+
+    def __update_menu_view(self):
+        for periph in self.svd_reader.device:
                 if periph["name"] == periph["group_name"]:
                     self.ui.act_periph += [QAction(self)]
                     self.ui.act_periph[-1].setObjectName(periph["name"])
@@ -479,8 +495,6 @@ class MainWindow(QMainWindow):
                     self.ui.menu_periph[menu_num].act_periph[-1].setText(periph["name"])
                     self.ui.menu_periph[menu_num].act_periph[-1].triggered.connect(self.handle_act_periph_triggered)
                     self.ui.menu_periph[menu_num].addAction(self.ui.menu_periph[menu_num].act_periph[-1])
-        except:
-            self.ui.statusBar.showMessage("Can't open %s - file is corrupted!" % os.path.basename(path))
 
     def connect_openocd(self):
         try:
@@ -503,6 +517,6 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     main_window = MainWindow()
     if len(sys.argv) > 1:
-        main_window.open_svd(sys.argv[1])
+        main_window.open_svd_path(sys.argv[1])
     main_window.show()
     sys.exit(app.exec_())
