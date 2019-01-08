@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QWidget, QCombo
                              QTreeWidgetItem, QLineEdit, QAction, QMenu, QPushButton, QSizePolicy)
 from ui_main import Ui_MainWindow
 from ui_about import Ui_Dialog
+from ui_svd import Ui_SVDDialog
 
 
 # -- Global variables ---------------------------------------------------------
@@ -359,6 +360,9 @@ class MainWindow(QMainWindow):
         self.about_dialog = QDialog(self)
         self.about_dialog.ui = Ui_Dialog()
         self.about_dialog.ui.setupUi(self.about_dialog)
+        self.svd_dialog = QDialog(self)
+        self.svd_dialog.ui = Ui_SVDDialog()
+        self.svd_dialog.ui.setupUi(self.svd_dialog)
 
         # Add some vars
         self.svd_reader = SVDReader()
@@ -380,10 +384,30 @@ class MainWindow(QMainWindow):
             self.open_svd_path(fileName)
 
     def handle_act_open_packed_svd_triggered(self):
-        # here will be menu executed where vendor and filename will be chosen
-        vendor = "STMicro"
-        filename = 'STM32F103xx.svd'
-        self.open_svd_packed(vendor, filename)
+        self.svd_dialog.ui.tree_svd.itemDoubleClicked.connect(self.handle_svd_dialog_item_double_clicked)
+        self.svd_dialog.ui.tree_svd.headerItem().setText(0, "List of packed SVD")
+        for vendor in self.svd_reader.get_packed_list():
+            vendor_name = vendor["vendor"]
+            item0 = QTreeWidgetItem(self.svd_dialog.ui.tree_svd)
+            item0.setText(0, vendor_name)
+            item0.is_vendor = True
+            self.svd_dialog.ui.tree_svd.addTopLevelItem(item0)
+            for filename in vendor["filenames"]:
+                item1 = QTreeWidgetItem(item0)
+                item1.is_vendor = False
+                item1.setText(0, filename)
+                item0.addChild(item1)
+        if self.svd_dialog.exec_() and (not self.svd_dialog.ui.tree_svd.currentItem().is_vendor):
+            vendor = self.svd_dialog.ui.tree_svd.currentItem().parent().text(0)
+            filename = self.svd_dialog.ui.tree_svd.currentItem().text(0)
+            self.open_svd_packed(vendor, filename)
+
+    def handle_svd_dialog_item_double_clicked(self, item, col):
+        if not item.is_vendor:
+            vendor = item.parent().text(0)
+            filename = item.text(0)
+            self.open_svd_packed(vendor, filename)
+            self.svd_dialog.accept()
 
     def handle_act_about_triggered(self):
         text = self.about_dialog.ui.lab_version.text().replace("x.x", VERSION)

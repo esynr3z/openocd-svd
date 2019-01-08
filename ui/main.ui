@@ -176,6 +176,9 @@
    <property name="text">
     <string>Open SVD from packed</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+O</string>
+   </property>
   </action>
  </widget>
  <resources/>

@@ -109,6 +109,7 @@ class Ui_MainWindow(object):
         self.act_connect.setStatusTip(_translate("MainWindow", "Open/close connection to OpenOCD"))
         self.act_connect.setShortcut(_translate("MainWindow", "Ctrl+E"))
         self.act_open_packed_svd.setText(_translate("MainWindow", "Open SVD from packed"))
+        self.act_open_packed_svd.setShortcut(_translate("MainWindow", "Ctrl+Shift+O"))
 
 
 if __name__ == "__main__":
