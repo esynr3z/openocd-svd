@@ -294,12 +294,20 @@ class PeriphTab(QWidget):
         self.vert_layout = QVBoxLayout(self)
         self.vert_layout.setContentsMargins(6, 6, 6, 6)
         self.vert_layout.setSpacing(6)
-        # label with peripheral description
-        self.lab_periph_descr = QLabel(self)
+        # label with peripheral description and read all button
+        self.header = QWidget(self)
+        self.horiz_layout = QHBoxLayout(self.header)
+        self.lab_periph_descr = QLabel(self.header)
         self.lab_periph_descr.setText(self.svd["description"])
         self.lab_periph_descr.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse |
                                                       QtCore.Qt.TextSelectableByMouse)
-        self.vert_layout.addWidget(self.lab_periph_descr)
+        self.horiz_layout.addWidget(self.lab_periph_descr)
+        self.btn_readall = QPushButton(self.header)
+        self.btn_readall.setText("Read all")
+        self.btn_readall.setMaximumSize(QtCore.QSize(100, 20))
+        self.btn_readall.clicked.connect(self.handle_btn_readall_clicked)
+        self.horiz_layout.addWidget(self.btn_readall)
+        self.vert_layout.addWidget(self.header)
         # tree widget for displaying regs
         reg_col = 0
         val_col = 1
@@ -351,6 +359,11 @@ class PeriphTab(QWidget):
         else:
             bits = ""
         self.lab_info.setText("(0x%08x)%s%s : %s\n%s" % (addr, bits, access, name, descr))
+
+    def handle_btn_readall_clicked(self):
+        for reg_n in range(0, self.tree_regs.topLevelItemCount()):
+            reg = self.tree_regs.itemWidget(self.tree_regs.topLevelItem(reg_n), 1)
+            reg.btn_read.clicked.emit()
 
 
 # -- Main window --------------------------------------------------------------
