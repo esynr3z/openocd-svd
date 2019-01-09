@@ -363,6 +363,8 @@ class MainWindow(QMainWindow):
         self.svd_dialog = QDialog(self)
         self.svd_dialog.ui = Ui_SVDDialog()
         self.svd_dialog.ui.setupUi(self.svd_dialog)
+        self.svd_dialog.ui.tree_svd.itemDoubleClicked.connect(self.handle_svd_dialog_item_double_clicked)
+        self.svd_dialog.ui.tree_svd.headerItem().setText(0, "List of packed SVD")
 
         # Add some vars
         self.svd_reader = SVDReader()
@@ -384,8 +386,7 @@ class MainWindow(QMainWindow):
             self.open_svd_path(fileName)
 
     def handle_act_open_packed_svd_triggered(self):
-        self.svd_dialog.ui.tree_svd.itemDoubleClicked.connect(self.handle_svd_dialog_item_double_clicked)
-        self.svd_dialog.ui.tree_svd.headerItem().setText(0, "List of packed SVD")
+        self.svd_dialog.ui.tree_svd.clear()
         for vendor in self.svd_reader.get_packed_list():
             vendor_name = vendor["vendor"]
             item0 = QTreeWidgetItem(self.svd_dialog.ui.tree_svd)
