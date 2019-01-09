@@ -63,6 +63,7 @@ class SVDReader:
                                 self.device[-1]["regs"][-1]["fields"][-1]["enums"] += [{"name": enum.name,
                                                                                         "description": enum.description,
                                                                                         "value": enum.value}]
+            self.device[-1]["regs"] = sorted(self.device[-1]["regs"], key=itemgetter('address_offset'))
         self.device = sorted(self.device, key=itemgetter('base_address'))
 
 
@@ -71,4 +72,6 @@ if __name__ == "__main__":
 
     svd_reader = SVDReader()
     pprint(svd_reader.get_packed_list())
-    device = svd_reader.parse_packed('STMicro', 'STM32F103xx.svd')
+    svd_reader.parse_packed('STMicro', 'STM32F103xx.svd')
+    for periph in svd_reader.device:
+        pprint(periph["name"])
