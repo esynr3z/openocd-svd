@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created by: PyQt5 UI code generator 5.10.1
+# Created by: PyQt5 UI code generator 5.11.3
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -47,7 +47,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_3.addLayout(self.verticalLayout)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 768, 28))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 768, 20))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
@@ -55,6 +55,8 @@ class Ui_MainWindow(object):
         self.menuHelp.setObjectName("menuHelp")
         self.menuView = QtWidgets.QMenu(self.menubar)
         self.menuView.setObjectName("menuView")
+        self.menuOptions = QtWidgets.QMenu(self.menubar)
+        self.menuOptions.setObjectName("menuOptions")
         MainWindow.setMenuBar(self.menubar)
         self.statusBar = QtWidgets.QStatusBar(MainWindow)
         self.statusBar.setObjectName("statusBar")
@@ -69,6 +71,12 @@ class Ui_MainWindow(object):
         self.act_connect.setObjectName("act_connect")
         self.act_open_packed_svd = QtWidgets.QAction(MainWindow)
         self.act_open_packed_svd.setObjectName("act_open_packed_svd")
+        self.act_autowrite = QtWidgets.QAction(MainWindow)
+        self.act_autowrite.setCheckable(True)
+        self.act_autowrite.setObjectName("act_autowrite")
+        self.actionAuto_read = QtWidgets.QAction(MainWindow)
+        self.actionAuto_read.setCheckable(True)
+        self.actionAuto_read.setObjectName("actionAuto_read")
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.act_open_svd)
         self.menuFile.addAction(self.act_open_packed_svd)
@@ -77,8 +85,10 @@ class Ui_MainWindow(object):
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.act_quit)
         self.menuHelp.addAction(self.act_about)
+        self.menuOptions.addAction(self.act_autowrite)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
+        self.menubar.addAction(self.menuOptions.menuAction())
         self.menubar.addAction(self.menuHelp.menuAction())
 
         self.retranslateUi(MainWindow)
@@ -89,6 +99,7 @@ class Ui_MainWindow(object):
         self.tabs_device.tabCloseRequested['int'].connect(MainWindow.handle_tab_periph_close)
         self.act_connect.triggered.connect(MainWindow.handle_act_connect_triggered)
         self.act_open_packed_svd.triggered.connect(MainWindow.handle_act_open_packed_svd_triggered)
+        self.act_autowrite.toggled['bool'].connect(MainWindow.handle_act_autowrite_toggled)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -97,6 +108,7 @@ class Ui_MainWindow(object):
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.menuHelp.setTitle(_translate("MainWindow", "Help"))
         self.menuView.setTitle(_translate("MainWindow", "View"))
+        self.menuOptions.setTitle(_translate("MainWindow", "Options"))
         self.act_quit.setText(_translate("MainWindow", "Quit"))
         self.act_quit.setStatusTip(_translate("MainWindow", "Quit the utility"))
         self.act_quit.setShortcut(_translate("MainWindow", "Ctrl+Q"))
@@ -110,6 +122,8 @@ class Ui_MainWindow(object):
         self.act_connect.setShortcut(_translate("MainWindow", "Ctrl+E"))
         self.act_open_packed_svd.setText(_translate("MainWindow", "Open SVD from packed"))
         self.act_open_packed_svd.setShortcut(_translate("MainWindow", "Ctrl+Shift+O"))
+        self.act_autowrite.setText(_translate("MainWindow", "Write register after edit"))
+        self.actionAuto_read.setText(_translate("MainWindow", "Read page registers on halt"))
 
 
 if __name__ == "__main__":

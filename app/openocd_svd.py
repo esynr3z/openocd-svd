@@ -164,6 +164,7 @@ class RegEdit(QWidget):
         for field in self.svd["fields"]:
             self.fields[field["name"]] = FieldEdit(field)
             self.fields[field["name"]].valueChanged.connect(self.handle_field_value_changed)
+        self.__opt_autowrite = False
 
     # -- Slots --
     def handle_reg_value_changed(self):
@@ -172,12 +173,16 @@ class RegEdit(QWidget):
             val = self.val()
             val = (val >> self.fields[key].svd["lsb"]) & ((2 ** self.fields[key].num_bwidth) - 1)
             self.fields[key].setVal(val)
+        if self.autoWrite():
+            self.btn_write.clicked.emit()
 
     def handle_field_value_changed(self):
         # if field value changed we should set update reg value
         val = self.val() & ~(((2 ** self.sender().num_bwidth) - 1) << self.sender().svd["lsb"])
         val = val | (self.sender().val() << self.sender().svd["lsb"])
         self.__update_val(val)
+        if self.autoWrite():
+            self.btn_write.clicked.emit()
 
     # -- API --
     def val(self):
@@ -189,6 +194,12 @@ class RegEdit(QWidget):
     def setVal(self, val):
         self.__update_val(val)
         self.handle_reg_value_changed()
+
+    def autoWrite(self):
+        return self.__opt_autowrite
+
+    def setAutoWrite(self, state):
+        self.__opt_autowrite = state
 
 
 class FieldEdit(QWidget):
@@ -468,6 +479,13 @@ class MainWindow(QMainWindow):
         if widget is not None:
             widget.deleteLater()
         self.ui.tabs_device.removeTab(num)
+
+    def handle_act_autowrite_toggled(self, state):
+        for tab_n in range(0, self.ui.tabs_device.count()):
+            tab = self.ui.tabs_device.widget(tab_n)
+            for reg_n in range(0, tab.tree_regs.topLevelItemCount()):
+                reg = tab.tree_regs.itemWidget(tab.tree_regs.topLevelItem(reg_n), 1)
+                reg.setAutoWrite(state)
 
     # -- Application specific code --
     def close_svd(self):

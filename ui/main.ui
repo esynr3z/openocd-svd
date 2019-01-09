@@ -100,7 +100,7 @@
      <x>0</x>
      <y>0</y>
      <width>768</width>
-     <height>28</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -126,8 +126,15 @@
      <string>View</string>
     </property>
    </widget>
+   <widget class="QMenu" name="menuOptions">
+    <property name="title">
+     <string>Options</string>
+    </property>
+    <addaction name="act_autowrite"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
+   <addaction name="menuOptions"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
@@ -178,6 +185,22 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+O</string>
+   </property>
+  </action>
+  <action name="act_autowrite">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Write register after edit</string>
+   </property>
+  </action>
+  <action name="actionAuto_read">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Read page registers on halt</string>
    </property>
   </action>
  </widget>
@@ -279,6 +302,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>act_autowrite</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>handle_act_autowrite_toggled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>383</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>handle_act_open_svd_triggered()</slot>
@@ -286,5 +325,6 @@
   <slot>handle_tab_periph_close(int)</slot>
   <slot>handle_act_connect_triggered()</slot>
   <slot>handle_act_open_packed_svd_triggered()</slot>
+  <slot>handle_act_autowrite_toggled(bool)</slot>
  </slots>
 </ui>
