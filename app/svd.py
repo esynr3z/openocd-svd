@@ -34,7 +34,7 @@ class SVDReader:
         for periph in peripherals:
             self.device += [{"type": "periph",
                              "name": periph.name,
-                             "description": periph.description,
+                             "description": ' '.join(periph.description.replace("\n", " ").split()),
                              "base_address": periph.base_address,
                              "group_name": periph.group_name,
                              "regs": periph.derived_from}]  # regs value will be replaced with regs list
@@ -45,13 +45,13 @@ class SVDReader:
                 for reg in periph.registers:
                     self.device[-1]["regs"] += [{"type": "reg",
                                                  "name": reg.name,
-                                                 "description": reg.description,
+                                                 "description": ' '.join(reg.description.replace("\n", " ").split()),
                                                  "address_offset": reg.address_offset,
                                                  "fields": []}]
                     for field in reg.fields:
                         self.device[-1]["regs"][-1]["fields"] += [{"type": "field",
                                                                    "name": field.name,
-                                                                   "description": field.description,
+                                                                   "description": ' '.join(field.description.replace("\n", " ").split()),
                                                                    "address_offset": reg.address_offset,
                                                                    "lsb": field.bit_offset,
                                                                    "msb": field.bit_offset + field.bit_width - 1,
@@ -61,7 +61,7 @@ class SVDReader:
                             self.device[-1]["regs"][-1]["fields"][-1]["enums"] = []
                             for enum in field.enumerated_values:
                                 self.device[-1]["regs"][-1]["fields"][-1]["enums"] += [{"name": enum.name,
-                                                                                        "description": enum.description,
+                                                                                        "description": ' '.join(enum.description.replace("\n", " ").split()),
                                                                                         "value": enum.value}]
             self.device[-1]["regs"] = sorted(self.device[-1]["regs"], key=itemgetter('address_offset'))
         self.device = sorted(self.device, key=itemgetter('base_address'))
