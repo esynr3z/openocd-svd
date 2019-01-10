@@ -131,6 +131,7 @@
      <string>Options</string>
     </property>
     <addaction name="act_autowrite"/>
+    <addaction name="act_autoread"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -201,6 +202,14 @@
    </property>
    <property name="text">
     <string>Read page registers on halt</string>
+   </property>
+  </action>
+  <action name="act_autoread">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Read registers on halt</string>
    </property>
   </action>
  </widget>
@@ -318,6 +327,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>act_autoread</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>handle_act_autoread_toggled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>383</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>handle_act_open_svd_triggered()</slot>
@@ -326,5 +351,6 @@
   <slot>handle_act_connect_triggered()</slot>
   <slot>handle_act_open_packed_svd_triggered()</slot>
   <slot>handle_act_autowrite_toggled(bool)</slot>
+  <slot>handle_act_autoread_toggled(bool)</slot>
  </slots>
 </ui>

@@ -77,6 +77,9 @@ class Ui_MainWindow(object):
         self.actionAuto_read = QtWidgets.QAction(MainWindow)
         self.actionAuto_read.setCheckable(True)
         self.actionAuto_read.setObjectName("actionAuto_read")
+        self.act_autoread = QtWidgets.QAction(MainWindow)
+        self.act_autoread.setCheckable(True)
+        self.act_autoread.setObjectName("act_autoread")
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.act_open_svd)
         self.menuFile.addAction(self.act_open_packed_svd)
@@ -86,6 +89,7 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.act_quit)
         self.menuHelp.addAction(self.act_about)
         self.menuOptions.addAction(self.act_autowrite)
+        self.menuOptions.addAction(self.act_autoread)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
         self.menubar.addAction(self.menuOptions.menuAction())
@@ -100,6 +104,7 @@ class Ui_MainWindow(object):
         self.act_connect.triggered.connect(MainWindow.handle_act_connect_triggered)
         self.act_open_packed_svd.triggered.connect(MainWindow.handle_act_open_packed_svd_triggered)
         self.act_autowrite.toggled['bool'].connect(MainWindow.handle_act_autowrite_toggled)
+        self.act_autoread.triggered['bool'].connect(MainWindow.handle_act_autoread_toggled)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -124,6 +129,7 @@ class Ui_MainWindow(object):
         self.act_open_packed_svd.setShortcut(_translate("MainWindow", "Ctrl+Shift+O"))
         self.act_autowrite.setText(_translate("MainWindow", "Write register after edit"))
         self.actionAuto_read.setText(_translate("MainWindow", "Read page registers on halt"))
+        self.act_autoread.setText(_translate("MainWindow", "Read registers on halt"))
 
 
 if __name__ == "__main__":

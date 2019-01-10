@@ -10,11 +10,13 @@ import telnetlib
 class OpenOCDTelnet:
     def __init__(self):
         self.is_opened = False
+        self.is_busy = False
         self.__target = ""
 
     def open(self, host="localhost", port=4444, timeout=1):
         self.telnet = telnetlib.Telnet(host, port)
         self.is_opened = True
+        self.is_busy = False
         self.timeout = timeout
         self.read_data()
         self.get_target_name()
@@ -45,12 +47,23 @@ class OpenOCDTelnet:
             raise RuntimeError("Can't write data - OpenOCD telnet is not opened!")
 
     def send_cmd(self, cmd):
+        while self.is_busy:
+            pass
+        self.is_busy = True
         self.write_data(cmd)
-        return self.read_data().strip().split('\r\n')[-1].strip()
+        retval = self.read_data().strip().split('\r\n')[-1].strip()
+        self.is_busy = False
+        return retval
 
     def get_target_name(self):
         self.__target = self.send_cmd("target current")
         return self.__target
+
+    def get_target_state(self):
+        return self.send_cmd("%s curstate" % self.__target)
+
+    def get_target_pc(self):
+        return int(self.send_cmd("reg pc").split(":")[-1].strip(), 16)
 
     def read_mem(self, addr):
         return int(self.send_cmd("mdw 0x%08x" % addr).split(":")[-1].strip(), 16)
@@ -64,5 +77,6 @@ if __name__ == "__main__":
     openocd_tn.open()
     if (openocd_tn.check_alive()):
         print(openocd_tn.get_target_name())
+        print(openocd_tn.get_target_state())
         print("0x%08X" % openocd_tn.read_mem(0x00000000))
     openocd_tn.close()

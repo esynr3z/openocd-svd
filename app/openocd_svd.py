@@ -428,6 +428,7 @@ class MainWindow(QMainWindow):
         self.svd_reader = SVDReader()
         self.openocd_tn = OpenOCDTelnet()
         self.openocd_rt = None
+        self.opt_autoread = False
 
     # -- Events --
     def closeEvent(self, event):
@@ -500,33 +501,35 @@ class MainWindow(QMainWindow):
             self.ui.tabs_device.setCurrentIndex(self.ui.tabs_device.count() - 1)
 
     def handle_btn_read_clicked(self, index):
-        periph = self.ui.tabs_device.currentWidget()
-        reg = periph.tree_regs.itemWidget(periph.tree_regs.topLevelItem(index), 1)
-        addr = periph.svd["base_address"] + reg.svd["address_offset"]
-        try:
-            reg.setVal(self.openocd_tn.read_mem(addr))
-            self.ui.statusBar.showMessage("Read %s.%s @ 0x%08X - OK" % (periph.svd["name"],
-                                                                        reg.svd["name"],
-                                                                        addr))
-        except RuntimeError:
-            self.ui.statusBar.showMessage("Read %s.%s @ 0x%08X - Error" % (periph.svd["name"],
-                                                                           reg.svd["name"],
-                                                                           addr))
-
-    def handle_btn_write_clicked(self, index):
-        periph = self.ui.tabs_device.currentWidget()
-        reg = periph.tree_regs.itemWidget(periph.tree_regs.topLevelItem(index), 1)
-        addr = periph.svd["base_address"] + reg.svd["address_offset"]
-        try:
-            self.openocd_tn.write_mem(addr, reg.val())
-            self.ui.statusBar.showMessage("Write %s.%s @ 0x%08X - OK" % (periph.svd["name"],
-                                                                         reg.svd["name"],
-                                                                         addr))
-
-        except RuntimeError:
-            self.ui.statusBar.showMessage("Write %s.%s @ 0x%08X - Error" % (periph.svd["name"],
+        if self.openocd_tn.is_opened:
+            periph = self.ui.tabs_device.currentWidget()
+            reg = periph.tree_regs.itemWidget(periph.tree_regs.topLevelItem(index), 1)
+            addr = periph.svd["base_address"] + reg.svd["address_offset"]
+            try:
+                reg.setVal(self.openocd_tn.read_mem(addr))
+                self.ui.statusBar.showMessage("Read %s.%s @ 0x%08X - OK" % (periph.svd["name"],
                                                                             reg.svd["name"],
                                                                             addr))
+            except RuntimeError:
+                self.ui.statusBar.showMessage("Read %s.%s @ 0x%08X - Error" % (periph.svd["name"],
+                                                                               reg.svd["name"],
+                                                                               addr))
+
+    def handle_btn_write_clicked(self, index):
+        if self.openocd_tn.is_opened:
+            periph = self.ui.tabs_device.currentWidget()
+            reg = periph.tree_regs.itemWidget(periph.tree_regs.topLevelItem(index), 1)
+            addr = periph.svd["base_address"] + reg.svd["address_offset"]
+            try:
+                self.openocd_tn.write_mem(addr, reg.val())
+                self.ui.statusBar.showMessage("Write %s.%s @ 0x%08X - OK" % (periph.svd["name"],
+                                                                             reg.svd["name"],
+                                                                             addr))
+
+            except RuntimeError:
+                self.ui.statusBar.showMessage("Write %s.%s @ 0x%08X - Error" % (periph.svd["name"],
+                                                                                reg.svd["name"],
+                                                                                addr))
 
     def handle_tab_periph_close(self, num):
         widget = self.ui.tabs_device.widget(num)
@@ -540,6 +543,9 @@ class MainWindow(QMainWindow):
             for reg_n in range(0, tab.tree_regs.topLevelItemCount()):
                 reg = tab.tree_regs.itemWidget(tab.tree_regs.topLevelItem(reg_n), 1)
                 reg.setAutoWrite(state)
+
+    def handle_act_autoread_toggled(self, state):
+        self.opt_autoread = state
 
     # -- Application specific code --
     def close_svd(self):
@@ -598,14 +604,26 @@ class MainWindow(QMainWindow):
             self.openocd_tn.open()
             self.ui.act_connect.setText("Disconnect OpenOCD")
             self.openocd_target = self.openocd_tn.get_target_name()
+            self.openocd_target_pc = self.openocd_tn.get_target_pc()
             self.__poll_openocd()
-            self.openocd_rt = RepeatedTimer(5, self.__poll_openocd)
+            self.openocd_rt = RepeatedTimer(1, self.__poll_openocd)
         except:
             self.ui.statusBar.showMessage("Can't connect to OpenOCD!")
 
     def __poll_openocd(self):
         if self.openocd_tn.check_alive():
-            self.ui.lab_status.setText("Connected: %s" % (self.openocd_target))
+            self.openocd_target_state = self.openocd_tn.get_target_state()
+            if self.openocd_target_state != "halted":
+                new_target_pc = self.openocd_target_pc
+            else:
+                new_target_pc = self.openocd_tn.get_target_pc()
+            self.ui.lab_status.setText("Connected: %s | %s | 0x%08X" % (self.openocd_target,
+                                                                        self.openocd_target_state, new_target_pc))
+            if self.opt_autoread and self.ui.tabs_device.count():
+                if ((self.openocd_target_state == "halted") and (new_target_pc != self.openocd_target_pc)):
+                    self.ui.tabs_device.currentWidget().btn_readall.clicked.emit()
+            self.openocd_target_pc = new_target_pc
+
         else:
             self.openocd_rt.is_executing = False
             self.disconnect_openocd()
