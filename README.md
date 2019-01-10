@@ -23,4 +23,3 @@ openocd-svd is a Python-based GUI utility to access peripheral registers of ARM 
 
 - show registers inside complex SVD types like clusters, cluster and register arrays in true heirachical way
 - implement auto read option to update all regs on the page every time MCU halted
-- check status of the openocd server and do auto disconnect when needed

@@ -12,6 +12,8 @@ Run (SVD path argument is optional):
 import sys
 import os
 import functools
+import threading
+import time
 from svd import SVDReader
 from openocd import OpenOCDTelnet
 from PyQt5 import QtCore
@@ -26,6 +28,38 @@ from ui_svd import Ui_SVDDialog
 
 # -- Global variables ---------------------------------------------------------
 VERSION = "0.5"
+
+
+# -- Special classes ----------------------------------------------------------
+class RepeatedTimer(object):
+    def __init__(self, interval, function, *args, **kwargs):
+        self._timer = None
+        self.interval = interval
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+        self.is_running = False
+        self.is_executing = False
+        self.next_call = time.time()
+        self.start()
+
+    def _run(self):
+        self.is_running = False
+        self.start()
+        self.is_executing = True
+        self.function(*self.args, **self.kwargs)
+        self.is_executing = False
+
+    def start(self):
+        if not self.is_running:
+            self.next_call += self.interval
+            self._timer = threading.Timer(self.next_call - time.time(), self._run)
+            self._timer.start()
+            self.is_running = True
+
+    def stop(self):
+        self._timer.cancel()
+        self.is_running = False
 
 
 # -- Custom widgets -----------------------------------------------------------
@@ -393,6 +427,13 @@ class MainWindow(QMainWindow):
         # Add some vars
         self.svd_reader = SVDReader()
         self.openocd_tn = OpenOCDTelnet()
+        self.openocd_rt = None
+
+    # -- Events --
+    def closeEvent(self, event):
+        if self.openocd_tn.is_opened:
+            self.disconnect_openocd()
+        event.accept()
 
     # -- Slots --
     def handle_act_connect_triggered(self):
@@ -555,15 +596,25 @@ class MainWindow(QMainWindow):
     def connect_openocd(self):
         try:
             self.openocd_tn.open()
-            self.openocd_tn.is_opened = True
             self.ui.act_connect.setText("Disconnect OpenOCD")
-            self.ui.lab_status.setText("Connected to %s" % self.openocd_tn.get_target_name())
+            self.openocd_target = self.openocd_tn.get_target_name()
+            self.__poll_openocd()
+            self.openocd_rt = RepeatedTimer(5, self.__poll_openocd)
         except:
             self.ui.statusBar.showMessage("Can't connect to OpenOCD!")
 
+    def __poll_openocd(self):
+        if self.openocd_tn.check_alive():
+            self.ui.lab_status.setText("Connected: %s" % (self.openocd_target))
+        else:
+            self.openocd_rt.is_executing = False
+            self.disconnect_openocd()
+
     def disconnect_openocd(self):
+        self.openocd_rt.stop()
+        while self.openocd_rt.is_executing:
+            pass
         self.openocd_tn.close()
-        self.openocd_tn.is_opened = False
         self.ui.act_connect.setText("Connect OpenOCD")
         self.ui.lab_status.setText("No connection")
 
