@@ -32,9 +32,9 @@ openocd-svd is a Python-based GUI utility to access peripheral registers of ARM 
 - Connect MCU with OpenOCD any way you like (GDB, raw scripts, etc)
 - Start openocd-svd and open SVD file (or pass path to SVD as first argument at start)
 - Press Connect to access OpenOCD via telnet interface (localhost 4444)
-- use View menu to access peripheral registers you want
+- Use View menu to access peripheral registers you want
 
-Run (SVD path argument is optional):
+Example run (SVD path argument is optional):
 ```
 python3 openocd_svd.py %svd_file_path%
 ```

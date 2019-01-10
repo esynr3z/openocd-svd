@@ -25,7 +25,7 @@ from ui_svd import Ui_SVDDialog
 
 
 # -- Global variables ---------------------------------------------------------
-VERSION = "0.5"
+VERSION = "1.0"
 
 
 # -- Special classes ----------------------------------------------------------
