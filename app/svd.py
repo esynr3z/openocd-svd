@@ -4,10 +4,10 @@
 Read SVD file with cmsic-svd backend
 """
 
+import os
 from operator import itemgetter
+import cmsis_svd
 from cmsis_svd.parser import SVDParser
-from cmsis_svd.parser import pkg_resources
-
 
 class SVDReader:
     def __init__(self):
@@ -15,9 +15,11 @@ class SVDReader:
 
     def get_packed_list(self):
         packed = []
-        vendors = pkg_resources.resource_listdir("cmsis_svd", "data")
+        data_path = os.path.join(cmsis_svd.__path__[0], "data")
+        vendors = os.listdir(data_path)
         for vendor in vendors:
-            filenames = [n for n in pkg_resources.resource_listdir("cmsis_svd", "data/%s" % vendor) if ".svd" in n]
+            vendor_path = os.path.join(data_path, vendor)
+            filenames = [n for n in os.listdir(vendor_path) if ".svd" in n]
             packed += [{"vendor": vendor,
                         "filenames": sorted(filenames)}]
         return sorted(packed, key=lambda k: k['vendor'])
@@ -26,7 +28,7 @@ class SVDReader:
         self.__fill_device([periph for periph in SVDParser.for_xml_file(path).get_device().peripherals])
 
     def parse_packed(self, vendor, filename):
-        self.__fill_device([periph for periph in SVDParser.for_packaged_svd(vendor, filename).get_device().peripherals])
+        self.parse_path(os.path.join(cmsis_svd.__path__[0], "data", vendor, filename))
 
     def __fill_device(self, peripherals):
         # Read peripherals and their registers
