@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'svd.ui'
 #
-# Created by: PyQt5 UI code generator 5.10.1
+# Created by: PyQt5 UI code generator 5.11.3
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -16,6 +16,7 @@ class Ui_SVDDialog(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.tree_svd = QtWidgets.QTreeWidget(SVDDialog)
         self.tree_svd.setObjectName("tree_svd")
+        self.tree_svd.headerItem().setText(0, "1")
         self.verticalLayout.addWidget(self.tree_svd)
         self.btn_dialog = QtWidgets.QDialogButtonBox(SVDDialog)
         self.btn_dialog.setOrientation(QtCore.Qt.Horizontal)
